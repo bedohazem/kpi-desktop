@@ -4,6 +4,34 @@ import { is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { initDb, getDb } from './db'
 
+type DbTestResult = {
+  ok: boolean
+  dbPath: string
+  departmentsCount: number
+}
+
+type DepartmentRow = {
+  id: number
+  name: string
+  parent_id: number | null
+  parent_name: string | null
+  notes: string | null
+  active: number
+  created_at: string
+  updated_at: string
+}
+
+type CreateDepartmentInput = {
+  name: string
+  parent_id: number | null
+  notes: string
+  active: boolean
+}
+
+type MutationResult = {
+  success: boolean
+}
+
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 1200,
@@ -36,7 +64,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
   const dbPath = initDb()
 
-  ipcMain.handle('db:test', () => {
+  ipcMain.handle('db:test', (): DbTestResult => {
     const db = getDb()
     const row = db.prepare('SELECT COUNT(*) as count FROM departments').get() as {
       count: number
@@ -47,6 +75,53 @@ app.whenReady().then(() => {
       dbPath,
       departmentsCount: row.count
     }
+  })
+
+  ipcMain.handle('departments:list', (): DepartmentRow[] => {
+    const db = getDb()
+
+    return db
+      .prepare(
+        `
+        SELECT
+          d.id,
+          d.name,
+          d.parent_id,
+          p.name AS parent_name,
+          d.notes,
+          d.active,
+          d.created_at,
+          d.updated_at
+        FROM departments d
+        LEFT JOIN departments p ON p.id = d.parent_id
+        ORDER BY d.name
+      `
+      )
+      .all() as DepartmentRow[]
+  })
+
+  ipcMain.handle('departments:create', (_event, data: CreateDepartmentInput): MutationResult => {
+    const name = data.name.trim()
+
+    if (!name) {
+      throw new Error('اسم الإدارة مطلوب')
+    }
+
+    const db = getDb()
+
+    db.prepare(
+      `
+      INSERT INTO departments (name, parent_id, notes, active)
+      VALUES (@name, @parent_id, @notes, @active)
+    `
+    ).run({
+      name,
+      parent_id: data.parent_id,
+      notes: data.notes.trim(),
+      active: data.active ? 1 : 0
+    })
+
+    return { success: true }
   })
 
   createWindow()
