@@ -14,6 +14,9 @@ function createWindow() {
   });
 
   win.loadFile(path.join(__dirname, "../index.html"));
+
+  // مؤقتًا أثناء التطوير: يفتح Console عشان نعرف أي خطأ في الواجهة فورًا
+  win.webContents.openDevTools({ mode: "detach" });
 }
 
 app.whenReady().then(async () => {
@@ -350,11 +353,6 @@ ipcMain.handle("evaluations:copy-month", (_event, data) => {
 
 ipcMain.handle("reports:employee-period", (_event, data) => {
   const db = getDb();
-
-  const months = [];
-  for (let m = data.from_month; m <= data.to_month; m++) {
-    months.push(m);
-  }
 
   const rows = db.prepare(`
     SELECT 
