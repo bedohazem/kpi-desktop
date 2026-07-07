@@ -1,34 +1,41 @@
-import Versions from './components/Versions'
-import electronLogo from './assets/electron.svg'
+import { useState, type ReactElement } from 'react'
 
-function App(): React.JSX.Element {
-  const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
+type DbTestResult = {
+  ok: boolean
+  dbPath: string
+  departmentsCount: number
+}
+
+type AppApi = {
+  dbTest: () => Promise<DbTestResult>
+}
+
+declare global {
+  interface Window {
+    api: AppApi
+  }
+}
+
+function App(): ReactElement {
+  const [result, setResult] = useState<DbTestResult | null>(null)
+
+  async function testDb(): Promise<void> {
+    const data = await window.api.dbTest()
+    setResult(data)
+  }
 
   return (
-    <>
-      <img alt="logo" className="logo" src={electronLogo} />
-      <div className="creator">Powered by electron-vite</div>
-      <div className="text">
-        Build an Electron app with <span className="react">React</span>
-        &nbsp;and <span className="ts">TypeScript</span>
-      </div>
-      <p className="tip">
-        Please try pressing <code>F12</code> to open the devTool
-      </p>
-      <div className="actions">
-        <div className="action">
-          <a href="https://electron-vite.org/" target="_blank" rel="noreferrer">
-            Documentation
-          </a>
-        </div>
-        <div className="action">
-          <a target="_blank" rel="noreferrer" onClick={ipcHandle}>
-            Send IPC
-          </a>
-        </div>
-      </div>
-      <Versions></Versions>
-    </>
+    <div style={{ padding: 30, direction: 'rtl', fontFamily: 'Tahoma' }}>
+      <h1>برنامج التقييمات الشهرية</h1>
+
+      <button onClick={testDb}>اختبار قاعدة البيانات SQLite</button>
+
+      {result && (
+        <pre style={{ marginTop: 20, direction: 'ltr', textAlign: 'left' }}>
+          {JSON.stringify(result, null, 2)}
+        </pre>
+      )}
+    </div>
   )
 }
 
