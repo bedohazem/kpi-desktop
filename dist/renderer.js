@@ -1,5 +1,4 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 const api = window.api;
 let departments = [];
 let currentEvaluationRows = [];
@@ -17,13 +16,60 @@ const months = [
     { id: 11, name: "نوفمبر" },
     { id: 12, name: "ديسمبر" }
 ];
+console.log("KPI renderer loaded", { hasApi: Boolean(api) });
+window.addEventListener("error", (event) => {
+    console.error("Renderer error:", event.error || event.message);
+});
+window.addEventListener("unhandledrejection", (event) => {
+    console.error("Renderer promise error:", event.reason);
+});
 document.addEventListener("DOMContentLoaded", async () => {
     setupTabs();
+    setupButtons();
     fillYears();
     fillMonths();
-    await loadDepartments();
-    await loadEmployees();
+    if (!api) {
+        alert("خطأ: window.api غير موجود. راجع preload.ts");
+        return;
+    }
+    try {
+        await loadDepartments();
+        await loadEmployees();
+    }
+    catch (error) {
+        console.error(error);
+        alert(error?.message || "حدث خطأ أثناء تحميل البيانات");
+    }
 });
+function bindClick(selector, handler) {
+    const element = document.querySelector(selector);
+    if (!element)
+        return;
+    element.removeAttribute("onclick");
+    element.addEventListener("click", async (event) => {
+        event.preventDefault();
+        try {
+            await handler();
+        }
+        catch (error) {
+            console.error(error);
+            alert(error?.message || "حدث خطأ غير متوقع");
+        }
+    });
+}
+function setupButtons() {
+    bindClick('button[onclick="saveDepartment()"]', saveDepartment);
+    bindClick('button[onclick="saveEmployee()"]', saveEmployee);
+    bindClick('button[onclick="loadEvaluationMonth()"]', loadEvaluationMonth);
+    bindClick('button[onclick="saveEvaluations()"]', saveEvaluations);
+    bindClick('button[onclick="loadReport()"]', loadReport);
+    const empSearch = document.getElementById("empSearch");
+    empSearch?.removeAttribute("oninput");
+    empSearch?.addEventListener("input", () => loadEmployees());
+    const empFilterDepartment = document.getElementById("empFilterDepartment");
+    empFilterDepartment?.removeAttribute("onchange");
+    empFilterDepartment?.addEventListener("change", () => loadEmployees());
+}
 function setupTabs() {
     document.querySelectorAll(".tab").forEach((btn) => {
         btn.addEventListener("click", () => {
@@ -39,6 +85,8 @@ function fillYears() {
     const years = [year - 2, year - 1, year, year + 1];
     ["evalYear", "reportYear"].forEach((id) => {
         const select = document.getElementById(id);
+        if (!select)
+            return;
         select.innerHTML = "";
         for (const y of years) {
             const opt = document.createElement("option");
@@ -53,6 +101,8 @@ function fillYears() {
 function fillMonths() {
     ["evalMonth", "reportFromMonth", "reportToMonth"].forEach((id) => {
         const select = document.getElementById(id);
+        if (!select)
+            return;
         select.innerHTML = "";
         for (const m of months) {
             const opt = document.createElement("option");
@@ -61,6 +111,13 @@ function fillMonths() {
             select.appendChild(opt);
         }
     });
+}
+function safeText(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
 }
 /* =====================
    الإدارات
@@ -72,9 +129,9 @@ async function loadDepartments() {
     for (const dep of departments) {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-      <td>${dep.name || ""}</td>
-      <td>${dep.parent_name || "-"}</td>
-      <td>${dep.notes || ""}</td>
+      <td>${safeText(dep.name)}</td>
+      <td>${safeText(dep.parent_name || "-")}</td>
+      <td>${safeText(dep.notes)}</td>
       <td>${dep.active ? "نشطة" : "غير نشطة"}</td>
     `;
         tbody.appendChild(tr);
@@ -93,6 +150,7 @@ function fillDepartmentSelects() {
         const select = document.getElementById(id);
         if (!select)
             continue;
+        const oldValue = select.value;
         select.innerHTML = "";
         const empty = document.createElement("option");
         empty.value = "";
@@ -104,6 +162,7 @@ function fillDepartmentSelects() {
             opt.textContent = dep.name;
             select.appendChild(opt);
         }
+        select.value = oldValue;
     }
 }
 async function saveDepartment() {
@@ -121,8 +180,10 @@ async function saveDepartment() {
         active: true
     });
     document.getElementById("depName").value = "";
+    document.getElementById("depParent").value = "";
     document.getElementById("depNotes").value = "";
     await loadDepartments();
+    alert("تم حفظ الإدارة");
 }
 /* =====================
    الموظفين
@@ -139,12 +200,12 @@ async function loadEmployees() {
     for (const emp of employees) {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-      <td>${emp.employee_number || ""}</td>
-      <td>${emp.name || ""}</td>
-      <td>${emp.national_id || ""}</td>
-      <td>${emp.qualification || ""}</td>
-      <td>${emp.job_title || ""}</td>
-      <td>${emp.department_name || ""}</td>
+      <td>${safeText(emp.employee_number)}</td>
+      <td>${safeText(emp.name)}</td>
+      <td>${safeText(emp.national_id)}</td>
+      <td>${safeText(emp.qualification)}</td>
+      <td>${safeText(emp.job_title)}</td>
+      <td>${safeText(emp.department_name)}</td>
     `;
         tbody.appendChild(tr);
     }
@@ -174,7 +235,9 @@ async function saveEmployee() {
     ["empNumber", "empName", "empNationalId", "empQualification", "empJobTitle", "empNotes"].forEach((id) => {
         document.getElementById(id).value = "";
     });
+    document.getElementById("empDepartment").value = "";
     await loadEmployees();
+    alert("تم حفظ الموظف");
 }
 /* =====================
    التقييمات
@@ -194,22 +257,22 @@ async function loadEvaluationMonth() {
         const tr = document.createElement("tr");
         tr.dataset.employeeId = String(row.employee_id);
         tr.innerHTML = `
-      <td>${row.employee_number || ""}</td>
-      <td>${row.name || ""}</td>
-      <td>${row.job_title || ""}</td>
-      <td>${row.department_name || ""}</td>
+      <td>${safeText(row.employee_number)}</td>
+      <td>${safeText(row.name)}</td>
+      <td>${safeText(row.job_title)}</td>
+      <td>${safeText(row.department_name)}</td>
       <td>
         <input 
           type="number" 
           class="eval-value" 
-          value="${row.evaluation_value ?? ""}" 
+          value="${safeText(row.evaluation_value ?? "")}" 
           style="width:120px"
         />
       </td>
       <td>
         <input 
           class="eval-notes" 
-          value="${row.evaluation_notes || ""}" 
+          value="${safeText(row.evaluation_notes || "")}" 
           style="width:250px"
         />
       </td>
@@ -231,6 +294,10 @@ async function saveEvaluations() {
             notes
         });
     });
+    if (!rows.length) {
+        alert("اعرض الموظفين الأول قبل الحفظ");
+        return;
+    }
     await api.evaluations.saveBulk({
         year,
         month,
@@ -246,6 +313,10 @@ async function loadReport() {
     const from_month = Number(document.getElementById("reportFromMonth").value);
     const to_month = Number(document.getElementById("reportToMonth").value);
     const department_id = Number(document.getElementById("reportDepartment").value || 0);
+    if (from_month > to_month) {
+        alert("شهر البداية لازم يكون قبل شهر النهاية");
+        return;
+    }
     const rows = await api.reports.employeePeriod({
         year,
         from_month,
@@ -290,10 +361,10 @@ async function loadReport() {
         const avg = emp.count ? emp.total / emp.count : 0;
         const tr = document.createElement("tr");
         tr.innerHTML = `
-      <td>${emp.employee_number || ""}</td>
-      <td>${emp.name || ""}</td>
-      <td>${emp.job_title || ""}</td>
-      <td>${emp.department_name || ""}</td>
+      <td>${safeText(emp.employee_number)}</td>
+      <td>${safeText(emp.name)}</td>
+      <td>${safeText(emp.job_title)}</td>
+      <td>${safeText(emp.department_name)}</td>
       ${monthList.map((m) => `<td>${emp.months[m.id] ?? ""}</td>`).join("")}
       <td>${emp.total}</td>
       <td>${avg.toFixed(2)}</td>

@@ -1,4 +1,5 @@
 const api = (window as any).api;
+
 let departments: any[] = [];
 let currentEvaluationRows: any[] = [];
 
@@ -17,13 +18,69 @@ const months = [
   { id: 12, name: "ديسمبر" }
 ];
 
+console.log("KPI renderer loaded", { hasApi: Boolean(api) });
+
+window.addEventListener("error", (event) => {
+  console.error("Renderer error:", event.error || event.message);
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  console.error("Renderer promise error:", event.reason);
+});
+
 document.addEventListener("DOMContentLoaded", async () => {
   setupTabs();
+  setupButtons();
   fillYears();
   fillMonths();
-  await loadDepartments();
-  await loadEmployees();
+
+  if (!api) {
+    alert("خطأ: window.api غير موجود. راجع preload.ts");
+    return;
+  }
+
+  try {
+    await loadDepartments();
+    await loadEmployees();
+  } catch (error: any) {
+    console.error(error);
+    alert(error?.message || "حدث خطأ أثناء تحميل البيانات");
+  }
 });
+
+function bindClick(selector: string, handler: () => void | Promise<void>) {
+  const element = document.querySelector(selector) as HTMLElement | null;
+  if (!element) return;
+
+  element.removeAttribute("onclick");
+
+  element.addEventListener("click", async (event) => {
+    event.preventDefault();
+
+    try {
+      await handler();
+    } catch (error: any) {
+      console.error(error);
+      alert(error?.message || "حدث خطأ غير متوقع");
+    }
+  });
+}
+
+function setupButtons() {
+  bindClick('button[onclick="saveDepartment()"]', saveDepartment);
+  bindClick('button[onclick="saveEmployee()"]', saveEmployee);
+  bindClick('button[onclick="loadEvaluationMonth()"]', loadEvaluationMonth);
+  bindClick('button[onclick="saveEvaluations()"]', saveEvaluations);
+  bindClick('button[onclick="loadReport()"]', loadReport);
+
+  const empSearch = document.getElementById("empSearch") as HTMLInputElement | null;
+  empSearch?.removeAttribute("oninput");
+  empSearch?.addEventListener("input", () => loadEmployees());
+
+  const empFilterDepartment = document.getElementById("empFilterDepartment") as HTMLSelectElement | null;
+  empFilterDepartment?.removeAttribute("onchange");
+  empFilterDepartment?.addEventListener("change", () => loadEmployees());
+}
 
 function setupTabs() {
   document.querySelectorAll(".tab").forEach((btn: any) => {
@@ -42,7 +99,9 @@ function fillYears() {
   const years = [year - 2, year - 1, year, year + 1];
 
   ["evalYear", "reportYear"].forEach((id) => {
-    const select = document.getElementById(id) as HTMLSelectElement;
+    const select = document.getElementById(id) as HTMLSelectElement | null;
+    if (!select) return;
+
     select.innerHTML = "";
 
     for (const y of years) {
@@ -57,7 +116,9 @@ function fillYears() {
 
 function fillMonths() {
   ["evalMonth", "reportFromMonth", "reportToMonth"].forEach((id) => {
-    const select = document.getElementById(id) as HTMLSelectElement;
+    const select = document.getElementById(id) as HTMLSelectElement | null;
+    if (!select) return;
+
     select.innerHTML = "";
 
     for (const m of months) {
@@ -67,6 +128,14 @@ function fillMonths() {
       select.appendChild(opt);
     }
   });
+}
+
+function safeText(value: any) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 /* =====================
@@ -83,9 +152,9 @@ async function loadDepartments() {
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
-      <td>${dep.name || ""}</td>
-      <td>${dep.parent_name || "-"}</td>
-      <td>${dep.notes || ""}</td>
+      <td>${safeText(dep.name)}</td>
+      <td>${safeText(dep.parent_name || "-")}</td>
+      <td>${safeText(dep.notes)}</td>
       <td>${dep.active ? "نشطة" : "غير نشطة"}</td>
     `;
 
@@ -105,8 +174,10 @@ function fillDepartmentSelects() {
   ];
 
   for (const id of ids) {
-    const select = document.getElementById(id) as HTMLSelectElement;
+    const select = document.getElementById(id) as HTMLSelectElement | null;
     if (!select) continue;
+
+    const oldValue = select.value;
 
     select.innerHTML = "";
 
@@ -121,6 +192,8 @@ function fillDepartmentSelects() {
       opt.textContent = dep.name;
       select.appendChild(opt);
     }
+
+    select.value = oldValue;
   }
 }
 
@@ -142,9 +215,11 @@ async function saveDepartment() {
   });
 
   (document.getElementById("depName") as HTMLInputElement).value = "";
+  (document.getElementById("depParent") as HTMLSelectElement).value = "";
   (document.getElementById("depNotes") as HTMLInputElement).value = "";
 
   await loadDepartments();
+  alert("تم حفظ الإدارة");
 }
 
 /* =====================
@@ -152,8 +227,8 @@ async function saveDepartment() {
 ===================== */
 
 async function loadEmployees() {
-  const search = (document.getElementById("empSearch") as HTMLInputElement)?.value || "";
-  const department_id = Number((document.getElementById("empFilterDepartment") as HTMLSelectElement)?.value || 0);
+  const search = (document.getElementById("empSearch") as HTMLInputElement | null)?.value || "";
+  const department_id = Number((document.getElementById("empFilterDepartment") as HTMLSelectElement | null)?.value || 0);
 
   const employees = await api.employees.list({
     search,
@@ -167,12 +242,12 @@ async function loadEmployees() {
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
-      <td>${emp.employee_number || ""}</td>
-      <td>${emp.name || ""}</td>
-      <td>${emp.national_id || ""}</td>
-      <td>${emp.qualification || ""}</td>
-      <td>${emp.job_title || ""}</td>
-      <td>${emp.department_name || ""}</td>
+      <td>${safeText(emp.employee_number)}</td>
+      <td>${safeText(emp.name)}</td>
+      <td>${safeText(emp.national_id)}</td>
+      <td>${safeText(emp.qualification)}</td>
+      <td>${safeText(emp.job_title)}</td>
+      <td>${safeText(emp.department_name)}</td>
     `;
 
     tbody.appendChild(tr);
@@ -208,7 +283,10 @@ async function saveEmployee() {
     (document.getElementById(id) as HTMLInputElement).value = "";
   });
 
+  (document.getElementById("empDepartment") as HTMLSelectElement).value = "";
+
   await loadEmployees();
+  alert("تم حفظ الموظف");
 }
 
 /* =====================
@@ -234,22 +312,22 @@ async function loadEvaluationMonth() {
     tr.dataset.employeeId = String(row.employee_id);
 
     tr.innerHTML = `
-      <td>${row.employee_number || ""}</td>
-      <td>${row.name || ""}</td>
-      <td>${row.job_title || ""}</td>
-      <td>${row.department_name || ""}</td>
+      <td>${safeText(row.employee_number)}</td>
+      <td>${safeText(row.name)}</td>
+      <td>${safeText(row.job_title)}</td>
+      <td>${safeText(row.department_name)}</td>
       <td>
         <input 
           type="number" 
           class="eval-value" 
-          value="${row.evaluation_value ?? ""}" 
+          value="${safeText(row.evaluation_value ?? "")}" 
           style="width:120px"
         />
       </td>
       <td>
         <input 
           class="eval-notes" 
-          value="${row.evaluation_notes || ""}" 
+          value="${safeText(row.evaluation_notes || "")}" 
           style="width:250px"
         />
       </td>
@@ -277,6 +355,11 @@ async function saveEvaluations() {
     });
   });
 
+  if (!rows.length) {
+    alert("اعرض الموظفين الأول قبل الحفظ");
+    return;
+  }
+
   await api.evaluations.saveBulk({
     year,
     month,
@@ -296,6 +379,11 @@ async function loadReport() {
   const to_month = Number((document.getElementById("reportToMonth") as HTMLSelectElement).value);
   const department_id = Number((document.getElementById("reportDepartment") as HTMLSelectElement).value || 0);
 
+  if (from_month > to_month) {
+    alert("شهر البداية لازم يكون قبل شهر النهاية");
+    return;
+  }
+
   const rows = await api.reports.employeePeriod({
     year,
     from_month,
@@ -304,7 +392,6 @@ async function loadReport() {
   });
 
   const monthList = months.filter((m) => m.id >= from_month && m.id <= to_month);
-
   const grouped: any = {};
 
   for (const row of rows) {
@@ -349,10 +436,10 @@ async function loadReport() {
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${emp.employee_number || ""}</td>
-      <td>${emp.name || ""}</td>
-      <td>${emp.job_title || ""}</td>
-      <td>${emp.department_name || ""}</td>
+      <td>${safeText(emp.employee_number)}</td>
+      <td>${safeText(emp.name)}</td>
+      <td>${safeText(emp.job_title)}</td>
+      <td>${safeText(emp.department_name)}</td>
       ${monthList.map((m) => `<td>${emp.months[m.id] ?? ""}</td>`).join("")}
       <td>${emp.total}</td>
       <td>${avg.toFixed(2)}</td>
