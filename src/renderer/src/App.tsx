@@ -88,7 +88,24 @@ function App(): ReactElement {
   }
 
   useEffect(() => {
-    void loadDepartments()
+    let isMounted = true
+
+    window.api.departments
+      .list()
+      .then((rows) => {
+        if (isMounted) {
+          setDepartments(rows)
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setMessage('حدث خطأ أثناء تحميل الإدارات')
+        }
+      })
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   return (
