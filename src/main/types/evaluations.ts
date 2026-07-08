@@ -1,6 +1,5 @@
 export type EvaluationEmployeeRow = {
   employee_id: number
-  employee_number: string | null
   employee_name: string
   job_title: string | null
   department_id: number | null

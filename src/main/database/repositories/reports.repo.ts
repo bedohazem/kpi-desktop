@@ -8,7 +8,6 @@ import type {
 
 type EmployeeBaseRow = {
   employee_id: number
-  employee_number: string | null
   employee_name: string
   job_title: string | null
   department_id: number | null
@@ -63,7 +62,6 @@ export function generateReports(filters: ReportFilters): ReportsResult {
       `
       SELECT
         e.id AS employee_id,
-        e.employee_number,
         e.name AS employee_name,
         e.job_title,
         e.department_id,
@@ -73,7 +71,7 @@ export function generateReports(filters: ReportFilters): ReportsResult {
       WHERE e.active = 1
         AND (@department_id IS NULL OR e.department_id = @department_id)
         AND (@employee_id IS NULL OR e.id = @employee_id)
-      ORDER BY d.name, e.name
+      ORDER BY e.id ASC
     `
     )
     .all({

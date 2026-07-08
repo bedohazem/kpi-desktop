@@ -17,7 +17,6 @@ export type Department = {
 
 export type Employee = {
   id: number
-  employee_number: string | null
   name: string
   national_id: string | null
   qualification: string | null
@@ -38,7 +37,6 @@ export type CreateDepartmentInput = {
 }
 
 export type CreateEmployeeInput = {
-  employee_number: string
   name: string
   national_id: string
   qualification: string
@@ -54,7 +52,6 @@ export type MutationResult = {
 
 export type EvaluationEmployee = {
   employee_id: number
-  employee_number: string | null
   employee_name: string
   job_title: string | null
   department_id: number | null
@@ -103,7 +100,6 @@ export type ReportFilters = {
 
 export type EmployeeReportRow = {
   employee_id: number
-  employee_number: string | null
   employee_name: string
   job_title: string | null
   department_id: number | null

@@ -58,6 +58,28 @@ function migrateDb(database: Database.Database): void {
       UNIQUE(employee_id, month, year)
     );
   `)
+
+  const duplicateNationalId = database
+    .prepare(
+      `
+      SELECT national_id
+      FROM employees
+      WHERE national_id IS NOT NULL
+        AND TRIM(national_id) <> ''
+      GROUP BY national_id
+      HAVING COUNT(*) > 1
+      LIMIT 1
+    `
+    )
+    .get() as { national_id: string } | undefined
+
+  if (!duplicateNationalId) {
+    database.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_national_id_unique
+      ON employees(national_id)
+      WHERE national_id IS NOT NULL AND TRIM(national_id) <> '';
+    `)
+  }
 }
 
 export function initDb(): string {

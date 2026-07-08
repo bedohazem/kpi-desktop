@@ -139,23 +139,34 @@ th {
   display: flex;
   gap: 10px;
   margin-bottom: 18px;
+  border-bottom: 0;
 }
 
 .tab {
   min-height: 42px;
   border: 1px solid #d1d5db;
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 0 18px;
   background: white;
   color: #111827;
   cursor: pointer;
   font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab:hover {
+  text-decoration: none;
+  background: #f3f4f6;
 }
 
 .tab.active {
   background: #2563eb;
   color: white;
   border-color: #2563eb;
+  text-decoration: none;
 }
 
 .checkbox-label {

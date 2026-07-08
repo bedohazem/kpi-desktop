@@ -28,7 +28,6 @@ export function listEvaluationEmployees(filters: EvaluationFilters): EvaluationE
       `
       SELECT
         e.id AS employee_id,
-        e.employee_number,
         e.name AS employee_name,
         e.job_title,
         e.department_id,

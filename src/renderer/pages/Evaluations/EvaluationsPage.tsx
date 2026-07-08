@@ -212,8 +212,7 @@ export default function EvaluationsPage(): ReactElement {
         <div className="table-wrapper">
           <table>
             <thead>
-              <tr>
-                <th>رقم الموظف</th>
+              <tr>                
                 <th>الاسم</th>
                 <th>الوظيفة</th>
                 <th>الإدارة</th>
@@ -225,12 +224,11 @@ export default function EvaluationsPage(): ReactElement {
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6}>اختار الشهر والإدارة ثم اضغط تحميل الموظفين</td>
+                  <td colSpan={5}>اختار الشهر والإدارة ثم اضغط تحميل الموظفين</td>
                 </tr>
               ) : (
                 rows.map((row) => (
                   <tr key={row.employee_id}>
-                    <td>{row.employee_number || '-'}</td>
                     <td>{row.employee_name}</td>
                     <td>{row.job_title || '-'}</td>
                     <td>{row.department_name || '-'}</td>

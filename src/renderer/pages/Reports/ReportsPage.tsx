@@ -77,9 +77,9 @@ export default function ReportsPage(): ReactElement {
     return
   }
 
-  const employeeRows = report.employees.map((employee) => {
+  const employeeRows = report.employees.map((employee, index) => {
     const row: Record<string, string | number> = {
-      'رقم الموظف': employee.employee_number || '',
+      م: index + 1,
       الاسم: employee.employee_name,
       الوظيفة: employee.job_title || '',
       الإدارة: employee.department_name || ''
@@ -145,7 +145,7 @@ function buildReportPdfHtml(): string {
   const monthColumns = report.months.map(() => '<col style="width: 4.2%" />').join('')
 
   const employeeRows = report.employees
-    .map((employee) => {
+    .map((employee, index) => {
       const monthCells = report.months
         .map((monthNumber) => {
           const value = employee.month_values[String(monthNumber)]
@@ -155,7 +155,7 @@ function buildReportPdfHtml(): string {
 
       return `
         <tr>
-          <td>${escapeHtml(employee.employee_number || '-')}</td>
+          <td>${index + 1}</td>
           <td class="text-cell">${escapeHtml(employee.employee_name)}</td>
           <td class="text-cell">${escapeHtml(employee.job_title || '-')}</td>
           <td class="text-cell">${escapeHtml(employee.department_name || '-')}</td>
@@ -311,10 +311,10 @@ function buildReportPdfHtml(): string {
 
         <table>
           <colgroup>
-            <col style="width: 6%" />
-            <col style="width: 10%" />
-            <col style="width: 8%" />
-            <col style="width: 8%" />
+            <col style="width: 3%" />
+            <col style="width: 12%" />
+            <col style="width: 9%" />
+            <col style="width: 9%" />
             ${monthColumns}
             <col style="width: 5%" />
             <col style="width: 5%" />
@@ -323,7 +323,7 @@ function buildReportPdfHtml(): string {
 
           <thead>
             <tr>
-              <th>رقم<br>الموظف</th>
+              <th>م</th>
               <th>الاسم</th>
               <th>الوظيفة</th>
               <th>الإدارة</th>
@@ -424,7 +424,7 @@ async function exportReportToPdf(): Promise<void> {
               <option value="">كل الموظفين</option>
               {filteredEmployees.map((employee) => (
                 <option key={employee.id} value={employee.id}>
-                  {employee.employee_number || '-'} - {employee.name}
+                  {employee.name}
                 </option>
               ))}
             </select>
@@ -479,7 +479,7 @@ async function exportReportToPdf(): Promise<void> {
               <table>
                 <thead>
                   <tr>
-                    <th>رقم الموظف</th>
+                    <th>م</th>
                     <th>الاسم</th>
                     <th>الوظيفة</th>
                     <th>الإدارة</th>
@@ -498,9 +498,9 @@ async function exportReportToPdf(): Promise<void> {
                       <td colSpan={report.months.length + 7}>لا توجد بيانات في هذا التقرير</td>
                     </tr>
                   ) : (
-                    report.employees.map((employee) => (
+                    report.employees.map((employee, index) => (
                       <tr key={employee.employee_id}>
-                        <td>{employee.employee_number || '-'}</td>
+                        <td>{index + 1}</td>
                         <td>{employee.employee_name}</td>
                         <td>{employee.job_title || '-'}</td>
                         <td>{employee.department_name || '-'}</td>

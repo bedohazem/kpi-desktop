@@ -10,7 +10,6 @@ export function listEmployees(): EmployeeRow[] {
       `
       SELECT
         e.id,
-        e.employee_number,
         e.name,
         e.national_id,
         e.qualification,
@@ -30,13 +29,8 @@ export function listEmployees(): EmployeeRow[] {
 }
 
 export function createEmployee(input: CreateEmployeeInput): MutationResult {
-  const employeeNumber = input.employee_number.trim()
   const name = input.name.trim()
   const nationalId = input.national_id.trim()
-
-  if (!employeeNumber) {
-    throw new Error('رقم الموظف مطلوب')
-  }
 
   if (!name) {
     throw new Error('اسم الموظف مطلوب')
@@ -48,11 +42,25 @@ export function createEmployee(input: CreateEmployeeInput): MutationResult {
 
   const db = getDb()
 
+  const existingNationalId = db
+    .prepare(
+      `
+      SELECT id
+      FROM employees
+      WHERE national_id = ?
+      LIMIT 1
+    `
+    )
+    .get(nationalId) as { id: number } | undefined
+
+  if (existingNationalId) {
+    throw new Error('الرقم القومي مسجل لموظف آخر')
+  }
+
   try {
     db.prepare(
       `
       INSERT INTO employees (
-        employee_number,
         name,
         national_id,
         qualification,
@@ -62,7 +70,6 @@ export function createEmployee(input: CreateEmployeeInput): MutationResult {
         active
       )
       VALUES (
-        @employee_number,
         @name,
         @national_id,
         @qualification,
@@ -73,7 +80,6 @@ export function createEmployee(input: CreateEmployeeInput): MutationResult {
       )
     `
     ).run({
-      employee_number: employeeNumber,
       name,
       national_id: nationalId,
       qualification: input.qualification.trim(),
@@ -84,7 +90,7 @@ export function createEmployee(input: CreateEmployeeInput): MutationResult {
     })
   } catch (error) {
     if (error instanceof Error && error.message.includes('UNIQUE')) {
-      throw new Error('رقم الموظف موجود قبل كده')
+      throw new Error('الرقم القومي أو بيانات الموظف مسجلة قبل كده')
     }
 
     throw error

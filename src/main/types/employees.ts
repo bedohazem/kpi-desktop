@@ -1,6 +1,5 @@
 export type EmployeeRow = {
   id: number
-  employee_number: string | null
   name: string
   national_id: string | null
   qualification: string | null
@@ -14,7 +13,6 @@ export type EmployeeRow = {
 }
 
 export type CreateEmployeeInput = {
-  employee_number: string
   name: string
   national_id: string
   qualification: string

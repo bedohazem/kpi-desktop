@@ -5,7 +5,6 @@ export default function EmployeesPage(): ReactElement {
   const [departments, setDepartments] = useState<Department[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
 
-  const [employeeNumber, setEmployeeNumber] = useState('')
   const [employeeName, setEmployeeName] = useState('')
   const [nationalId, setNationalId] = useState('')
   const [qualification, setQualification] = useState('')
@@ -27,10 +26,6 @@ export default function EmployeesPage(): ReactElement {
   async function saveEmployee(): Promise<void> {
     setEmployeeMessage('')
 
-    if (!employeeNumber.trim()) {
-      setEmployeeMessage('اكتب رقم الموظف')
-      return
-    }
 
     if (!employeeName.trim()) {
       setEmployeeMessage('اكتب اسم الموظف')
@@ -47,8 +42,7 @@ export default function EmployeesPage(): ReactElement {
     try {
       setIsSavingEmployee(true)
 
-      await window.api.employees.create({
-        employee_number: employeeNumber,
+      await window.api.employees.create({        
         name: employeeName,
         national_id: cleanNationalId,
         qualification,
@@ -58,7 +52,6 @@ export default function EmployeesPage(): ReactElement {
         active: employeeActive
       })
 
-      setEmployeeNumber('')
       setEmployeeName('')
       setNationalId('')
       setQualification('')
@@ -84,7 +77,6 @@ export default function EmployeesPage(): ReactElement {
       const matchesSearch =
         !searchText ||
         employee.name.toLowerCase().includes(searchText) ||
-        (employee.employee_number || '').toLowerCase().includes(searchText) ||
         (employee.national_id || '').toLowerCase().includes(searchText)
 
       const matchesDepartment =
@@ -121,10 +113,6 @@ export default function EmployeesPage(): ReactElement {
         <h2>إضافة موظف</h2>
 
         <div className="form-grid">
-          <label>
-            رقم الموظف
-            <input value={employeeNumber} onChange={(event) => setEmployeeNumber(event.target.value)} />
-          </label>
 
           <label>
             اسم الموظف
@@ -199,7 +187,7 @@ export default function EmployeesPage(): ReactElement {
 
         <div className="form-grid">
           <label>
-            بحث بالاسم أو رقم الموظف أو الرقم القومي
+              بحث بالاسم أو الرقم القومي 
             <input value={employeeSearch} onChange={(event) => setEmployeeSearch(event.target.value)} />
           </label>
 
@@ -221,8 +209,7 @@ export default function EmployeesPage(): ReactElement {
 
         <table>
           <thead>
-            <tr>
-              <th>رقم الموظف</th>
+            <tr>              
               <th>الاسم</th>
               <th>الرقم القومي</th>
               <th>المؤهل</th>
@@ -236,12 +223,11 @@ export default function EmployeesPage(): ReactElement {
           <tbody>
             {filteredEmployees.length === 0 ? (
               <tr>
-                <td colSpan={8}>لا توجد موظفين مطابقين للبحث</td>
+                <td colSpan={7}>لا توجد موظفين مطابقين للبحث</td>
               </tr>
             ) : (
               filteredEmployees.map((employee) => (
                 <tr key={employee.id}>
-                  <td>{employee.employee_number || '-'}</td>
                   <td>{employee.name}</td>
                   <td>{employee.national_id || '-'}</td>
                   <td>{employee.qualification || '-'}</td>
