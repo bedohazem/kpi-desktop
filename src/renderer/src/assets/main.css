@@ -134,3 +134,56 @@ th {
     grid-template-columns: 1fr;
   }
 }
+
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.tab {
+  min-height: 42px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0 18px;
+  background: white;
+  color: #111827;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.tab.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.checkbox-label {
+  justify-content: center;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.checkbox-label input {
+  min-height: auto;
+  width: 18px;
+  height: 18px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.section-header h2 {
+  margin: 0;
+}
+
+.section-header span {
+  color: #4b5563;
+  font-weight: 700;
+}

@@ -1,7 +1,6 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
-import icon from '../../resources/icon.png?asset'
 import { initDb, getDb } from './db'
 
 type DbTestResult = {
@@ -21,9 +20,35 @@ type DepartmentRow = {
   updated_at: string
 }
 
+type EmployeeRow = {
+  id: number
+  employee_number: string | null
+  name: string
+  national_id: string | null
+  qualification: string | null
+  job_title: string | null
+  department_id: number | null
+  department_name: string | null
+  notes: string | null
+  active: number
+  created_at: string
+  updated_at: string
+}
+
 type CreateDepartmentInput = {
   name: string
   parent_id: number | null
+  notes: string
+  active: boolean
+}
+
+type CreateEmployeeInput = {
+  employee_number: string
+  name: string
+  national_id: string
+  qualification: string
+  job_title: string
+  department_id: number | null
   notes: string
   active: boolean
 }
@@ -120,6 +145,98 @@ app.whenReady().then(() => {
       notes: data.notes.trim(),
       active: data.active ? 1 : 0
     })
+
+    return { success: true }
+  })
+
+  ipcMain.handle('employees:list', (): EmployeeRow[] => {
+    const db = getDb()
+
+    return db
+      .prepare(
+        `
+        SELECT
+          e.id,
+          e.employee_number,
+          e.name,
+          e.national_id,
+          e.qualification,
+          e.job_title,
+          e.department_id,
+          d.name AS department_name,
+          e.notes,
+          e.active,
+          e.created_at,
+          e.updated_at
+        FROM employees e
+        LEFT JOIN departments d ON d.id = e.department_id
+        ORDER BY e.name
+      `
+      )
+      .all() as EmployeeRow[]
+  })
+
+  ipcMain.handle('employees:create', (_event, data: CreateEmployeeInput): MutationResult => {
+    const employeeNumber = data.employee_number.trim()
+    const name = data.name.trim()
+
+    if (!employeeNumber) {
+      throw new Error('رقم الموظف مطلوب')
+    }
+
+    if (!name) {
+      throw new Error('اسم الموظف مطلوب')
+    }
+
+    const nationalId = data.national_id.trim()
+
+    if (!/^\d{14}$/.test(nationalId)) {
+      throw new Error('الرقم القومي لازم يكون 14 رقم بالظبط')
+    }
+
+    const db = getDb()
+
+    try {
+      db.prepare(
+        `
+        INSERT INTO employees (
+          employee_number,
+          name,
+          national_id,
+          qualification,
+          job_title,
+          department_id,
+          notes,
+          active
+        )
+        VALUES (
+          @employee_number,
+          @name,
+          @national_id,
+          @qualification,
+          @job_title,
+          @department_id,
+          @notes,
+          @active
+        )
+      `
+      ).run({
+        employee_number: employeeNumber,
+        name,
+        national_id: nationalId,
+        qualification: data.qualification.trim(),
+        job_title: data.job_title.trim(),
+        department_id: data.department_id,
+        notes: data.notes.trim(),
+        active: data.active ? 1 : 0
+      })
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('UNIQUE')) {
+        throw new Error('رقم الموظف موجود قبل كده')
+      }
+
+      throw error
+    }
 
     return { success: true }
   })
