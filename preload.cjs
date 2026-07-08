@@ -11,5 +11,12 @@ contextBridge.exposeInMainWorld('api', {
   employees: {
     list: () => ipcRenderer.invoke('employees:list'),
     create: (data) => ipcRenderer.invoke('employees:create', data)
+  },
+
+  evaluations: {
+    listEmployees: (filters) => ipcRenderer.invoke('evaluations:list-employees', filters),
+    saveMonth: (input) => ipcRenderer.invoke('evaluations:save-month', input),
+    copyPreviousMonth: (input) => ipcRenderer.invoke('evaluations:copy-previous-month', input)
   }
+
 })

@@ -3,6 +3,7 @@ import path from 'node:path'
 import { getDb, initDb } from './database/db'
 import { registerDepartmentsIpc } from './ipc/departments.ipc'
 import { registerEmployeesIpc } from './ipc/employees.ipc'
+import { registerEvaluationsIpc } from './ipc/evaluations.ipc'
 
 type DbTestResult = {
   ok: boolean
@@ -76,7 +77,7 @@ app.whenReady().then(() => {
 
   registerDepartmentsIpc()
   registerEmployeesIpc()
-
+  registerEvaluationsIpc()
   createWindow()
 
   app.on('activate', () => {

@@ -66,7 +66,6 @@ export function initDb(): string {
   if (!db) {
     db = new Database(dbPath)
     migrateDb(db)
-    console.log('SQLite database ready:', dbPath)
   }
 
   return dbPath
