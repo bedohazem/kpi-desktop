@@ -4,6 +4,7 @@ import { getDb, initDb } from './database/db'
 import { registerDepartmentsIpc } from './ipc/departments.ipc'
 import { registerEmployeesIpc } from './ipc/employees.ipc'
 import { registerEvaluationsIpc } from './ipc/evaluations.ipc'
+import { registerReportsIpc } from './ipc/reports.ipc'
 
 type DbTestResult = {
   ok: boolean
@@ -78,6 +79,7 @@ app.whenReady().then(() => {
   registerDepartmentsIpc()
   registerEmployeesIpc()
   registerEvaluationsIpc()
+  registerReportsIpc()
   createWindow()
 
   app.on('activate', () => {

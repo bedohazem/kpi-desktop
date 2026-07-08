@@ -4,6 +4,7 @@ import DashboardPage from './pages/Dashboard/DashboardPage'
 import DepartmentsPage from './pages/Departments/DepartmentsPage'
 import EmployeesPage from './pages/Employees/EmployeesPage'
 import EvaluationsPage from './pages/Evaluations/EvaluationsPage'
+import ReportsPage from './pages/Reports/ReportsPage'
 
 export const router = createHashRouter([
   {
@@ -25,6 +26,10 @@ export const router = createHashRouter([
       {
         path: 'evaluations',
         element: <EvaluationsPage />
+      },
+      {
+        path: 'reports',
+        element: <ReportsPage />
       }
     ]
   }

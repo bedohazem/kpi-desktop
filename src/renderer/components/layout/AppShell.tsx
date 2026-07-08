@@ -36,6 +36,12 @@ export default function AppShell(): ReactElement {
           >
             التقييمات الشهرية
           </NavLink>
+          <NavLink
+            className={({ isActive }) => (isActive ? 'tab active' : 'tab')}
+            to="/reports"
+          >
+            التقارير
+          </NavLink>
         </nav>
 
         <Outlet />
