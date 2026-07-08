@@ -136,6 +136,15 @@ export type SaveReportPdfResult = {
   filePath?: string
 }
 
+export type UpdateEmployeeInput = CreateEmployeeInput & {
+  id: number
+}
+
+export type SetEmployeeActiveInput = {
+  id: number
+  active: boolean
+}
+
 export type AppApi = {
   dbTest: () => Promise<DbTestResult>
   departments: {
@@ -145,6 +154,8 @@ export type AppApi = {
   employees: {
     list: () => Promise<Employee[]>
     create: (data: CreateEmployeeInput) => Promise<MutationResult>
+    update: (data: UpdateEmployeeInput) => Promise<MutationResult>
+    setActive: (data: SetEmployeeActiveInput) => Promise<MutationResult>
   }
   evaluations: {
     listEmployees: (filters: EvaluationFilters) => Promise<EvaluationEmployee[]>

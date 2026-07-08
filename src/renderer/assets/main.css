@@ -377,3 +377,32 @@ th {
     margin: 2px 0 !important;
   }
 }
+
+.table-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.small-button {
+  min-height: 30px;
+  border: 1px solid #d1d5db;
+  border-radius: 7px;
+  padding: 0 10px;
+  background: white;
+  color: #111827;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.small-button:hover {
+  background: #f3f4f6;
+}
+
+.small-button.danger {
+  border-color: #fecaca;
+  color: #b91c1c;
+  background: #fff5f5;
+}

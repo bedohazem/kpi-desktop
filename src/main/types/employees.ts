@@ -21,3 +21,12 @@ export type CreateEmployeeInput = {
   notes: string
   active: boolean
 }
+
+export type UpdateEmployeeInput = CreateEmployeeInput & {
+  id: number
+}
+
+export type SetEmployeeActiveInput = {
+  id: number
+  active: boolean
+}

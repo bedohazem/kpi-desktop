@@ -17,6 +17,7 @@ export default function EmployeesPage(): ReactElement {
   const [employeeDepartmentFilter, setEmployeeDepartmentFilter] = useState('')
   const [isSavingEmployee, setIsSavingEmployee] = useState(false)
   const [employeeMessage, setEmployeeMessage] = useState('')
+  const [editingEmployeeId, setEditingEmployeeId] = useState<number | null>(null)
 
   async function loadEmployees(): Promise<void> {
     const rows = await window.api.employees.list()
@@ -42,7 +43,9 @@ export default function EmployeesPage(): ReactElement {
     try {
       setIsSavingEmployee(true)
 
-      await window.api.employees.create({        
+    if (editingEmployeeId) {
+      await window.api.employees.update({
+        id: editingEmployeeId,
         name: employeeName,
         national_id: cleanNationalId,
         qualification,
@@ -51,6 +54,24 @@ export default function EmployeesPage(): ReactElement {
         notes: employeeNotes,
         active: employeeActive
       })
+
+      setEmployeeMessage('تم تعديل بيانات الموظف بنجاح')
+    } else {
+      await window.api.employees.create({
+        name: employeeName,
+        national_id: cleanNationalId,
+        qualification,
+        job_title: jobTitle,
+        department_id: employeeDepartmentId ? Number(employeeDepartmentId) : null,
+        notes: employeeNotes,
+        active: employeeActive
+      })
+
+      setEmployeeMessage('تم حفظ الموظف بنجاح')
+    }
+
+    resetEmployeeForm()
+    await loadEmployees()
 
       setEmployeeName('')
       setNationalId('')
@@ -106,6 +127,40 @@ export default function EmployeesPage(): ReactElement {
       isMounted = false
     }
   }, [])
+
+  function resetEmployeeForm(): void {
+    setEditingEmployeeId(null)
+    setEmployeeName('')
+    setNationalId('')
+    setQualification('')
+    setJobTitle('')
+    setEmployeeDepartmentId('')
+    setEmployeeNotes('')
+    setEmployeeActive(true)
+  }
+
+  function startEditEmployee(employee: Employee): void {
+    setEditingEmployeeId(employee.id)
+    setEmployeeName(employee.name)
+    setNationalId(employee.national_id || '')
+    setQualification(employee.qualification || '')
+    setJobTitle(employee.job_title || '')
+    setEmployeeDepartmentId(employee.department_id ? String(employee.department_id) : '')
+    setEmployeeNotes(employee.notes || '')
+    setEmployeeActive(Boolean(employee.active))
+    setEmployeeMessage('تعديل بيانات الموظف')
+  }
+
+  async function toggleEmployeeActive(employee: Employee): Promise<void> {
+    const nextActive = !employee.active
+
+    await window.api.employees.setActive({
+      id: employee.id,
+      active: nextActive
+    })
+
+    await loadEmployees()
+  }
 
   return (
     <>
@@ -173,8 +228,14 @@ export default function EmployeesPage(): ReactElement {
         </div>
 
         <button className="primary-button" disabled={isSavingEmployee} onClick={saveEmployee}>
-          {isSavingEmployee ? 'جاري الحفظ...' : 'حفظ الموظف'}
+          {isSavingEmployee ? 'جاري الحفظ...' : editingEmployeeId ? 'تعديل الموظف' : 'حفظ الموظف'}
         </button>
+
+        {editingEmployeeId && (
+          <button className="secondary-button" type="button" onClick={resetEmployeeForm}>
+            إلغاء التعديل
+          </button>
+        )}
 
         {employeeMessage && <p className="message">{employeeMessage}</p>}
       </section>
@@ -217,13 +278,14 @@ export default function EmployeesPage(): ReactElement {
               <th>الإدارة</th>
               <th>الحالة</th>
               <th>ملاحظات</th>
+              <th>إجراءات</th>
             </tr>
           </thead>
 
           <tbody>
             {filteredEmployees.length === 0 ? (
               <tr>
-                <td colSpan={7}>لا توجد موظفين مطابقين للبحث</td>
+                <td colSpan={8}>لا توجد موظفين مطابقين للبحث</td>
               </tr>
             ) : (
               filteredEmployees.map((employee) => (
@@ -235,6 +297,17 @@ export default function EmployeesPage(): ReactElement {
                   <td>{employee.department_name || '-'}</td>
                   <td>{employee.active ? 'نشط' : 'غير نشط'}</td>
                   <td>{employee.notes || '-'}</td>
+                  <td>
+                    <div className="table-actions">
+                      <button className="small-button" onClick={() => startEditEmployee(employee)}>
+                        تعديل
+                      </button>
+
+                      <button className="small-button danger" onClick={() => toggleEmployeeActive(employee)}>
+                        {employee.active ? 'تعطيل' : 'تفعيل'}
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
