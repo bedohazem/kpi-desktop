@@ -20,7 +20,8 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   reports: {
-    generate: (filters) => ipcRenderer.invoke('reports:generate', filters)
+    generate: (filters) => ipcRenderer.invoke('reports:generate', filters),
+    savePdf: (input) => ipcRenderer.invoke('reports:save-pdf', input)
   }
 
 })

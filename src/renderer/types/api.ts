@@ -129,6 +129,17 @@ export type ReportsResult = {
   departmentSummary: DepartmentSummaryRow[]
 }
 
+export type SaveReportPdfInput = {
+  html: string
+  fileName: string
+}
+
+export type SaveReportPdfResult = {
+  success: boolean
+  canceled?: boolean
+  filePath?: string
+}
+
 export type AppApi = {
   dbTest: () => Promise<DbTestResult>
   departments: {
@@ -146,6 +157,7 @@ export type AppApi = {
   }
   reports: {
     generate: (filters: ReportFilters) => Promise<ReportsResult>
+    savePdf: (input: SaveReportPdfInput) => Promise<SaveReportPdfResult>
   }
 }
 

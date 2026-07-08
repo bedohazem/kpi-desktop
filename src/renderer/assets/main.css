@@ -239,3 +239,130 @@ th {
   margin: 6px 0;
   font-weight: 700;
 }
+
+@page {
+  size: A4 landscape;
+  margin: 8mm;
+}
+
+@media print {
+  html,
+  body {
+    width: 297mm;
+    min-height: 210mm;
+    background: white !important;
+    color: black !important;
+    overflow: visible !important;
+  }
+
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .app {
+    min-height: auto !important;
+  }
+
+  .app-header,
+  .tabs,
+  .actions-row,
+  .message,
+  .form-grid {
+    display: none !important;
+  }
+
+  .page {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .card {
+    width: 100% !important;
+    box-shadow: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 0 10px !important;
+    page-break-inside: avoid;
+    background: white !important;
+  }
+
+  .card h2 {
+    font-size: 15px !important;
+    margin: 0 0 8px !important;
+    color: black !important;
+  }
+
+  .section-header {
+    margin-bottom: 8px !important;
+  }
+
+  .section-header h2 {
+    font-size: 15px !important;
+  }
+
+  .section-header span {
+    font-size: 12px !important;
+    color: black !important;
+  }
+
+  .table-wrapper {
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  table {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: fixed !important;
+    font-size: 8px !important;
+    direction: rtl !important;
+  }
+
+  th,
+  td {
+    border: 1px solid #777 !important;
+    padding: 3px 2px !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    color: black !important;
+    background: white !important;
+    word-break: break-word !important;
+    white-space: normal !important;
+    line-height: 1.25 !important;
+  }
+
+  th {
+    font-weight: 700 !important;
+    background: #f1f1f1 !important;
+  }
+
+  .report-summary-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .summary-card {
+    border: 1px solid #777 !important;
+    border-radius: 0 !important;
+    padding: 6px !important;
+    background: white !important;
+    page-break-inside: avoid;
+  }
+
+  .summary-card h3 {
+    font-size: 11px !important;
+    margin: 0 0 4px !important;
+  }
+
+  .summary-card p {
+    font-size: 9px !important;
+    margin: 2px 0 !important;
+  }
+}
