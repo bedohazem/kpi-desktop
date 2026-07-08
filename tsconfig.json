@@ -17,13 +17,13 @@
     "jsx": "react-jsx",
     "types": ["node", "vite/client"],
     "paths": {
-      "@/*": ["./src/renderer/src/*"]
+      "@/*": ["./src/renderer/*"]
     }
   },
   "include": [
     "vite.config.ts",
     "src/main/**/*.ts",
-    "src/renderer/src/**/*.ts",
-    "src/renderer/src/**/*.tsx"
+    "src/renderer/**/*.ts",
+    "src/renderer/**/*.tsx"
   ]
 }
