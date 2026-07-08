@@ -1,23 +1,24 @@
 import Database from 'better-sqlite3'
 import { app } from 'electron'
-import path from 'path'
-import fs from 'fs'
+import fs from 'node:fs'
+import path from 'node:path'
 
 let db: Database.Database | null = null
 
-export function initDb(): string {
+export function getDbPath(): string {
   const dataDir = path.join(app.getPath('userData'), 'data')
 
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true })
   }
 
-  const dbPath = path.join(dataDir, 'kpi.sqlite')
+  return path.join(dataDir, 'kpi.sqlite')
+}
 
-  db = new Database(dbPath)
-  db.pragma('foreign_keys = ON')
+function migrateDb(database: Database.Database): void {
+  database.pragma('foreign_keys = ON')
 
-  db.exec(`
+  database.exec(`
     CREATE TABLE IF NOT EXISTS departments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
@@ -57,13 +58,25 @@ export function initDb(): string {
       UNIQUE(employee_id, month, year)
     );
   `)
+}
 
-  console.log('SQLite database ready:', dbPath)
+export function initDb(): string {
+  const dbPath = getDbPath()
+
+  if (!db) {
+    db = new Database(dbPath)
+    migrateDb(db)
+    console.log('SQLite database ready:', dbPath)
+  }
 
   return dbPath
 }
 
 export function getDb(): Database.Database {
+  if (!db) {
+    initDb()
+  }
+
   if (!db) {
     throw new Error('Database is not initialized')
   }
