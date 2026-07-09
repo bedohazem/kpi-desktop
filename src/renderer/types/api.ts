@@ -145,6 +145,14 @@ export type SetEmployeeActiveInput = {
   active: boolean
 }
 
+export type ListEmployeesInput = {
+  includeInactive?: boolean
+}
+
+export type DeleteEmployeeInput = {
+  id: number
+}
+
 export type AppApi = {
   dbTest: () => Promise<DbTestResult>
   departments: {
@@ -152,10 +160,11 @@ export type AppApi = {
     create: (data: CreateDepartmentInput) => Promise<MutationResult>
   }
   employees: {
-    list: () => Promise<Employee[]>
+    list: (input?: ListEmployeesInput) => Promise<Employee[]>
     create: (data: CreateEmployeeInput) => Promise<MutationResult>
     update: (data: UpdateEmployeeInput) => Promise<MutationResult>
     setActive: (data: SetEmployeeActiveInput) => Promise<MutationResult>
+    delete: (data: DeleteEmployeeInput) => Promise<MutationResult>
   }
   evaluations: {
     listEmployees: (filters: EvaluationFilters) => Promise<EvaluationEmployee[]>

@@ -2,12 +2,14 @@ import { getDb } from '../db'
 import type { MutationResult } from '../../types/common'
 import type {
   CreateEmployeeInput,
+  DeleteEmployeeInput,
   EmployeeRow,
+  ListEmployeesInput,
   SetEmployeeActiveInput,
   UpdateEmployeeInput
 } from '../../types/employees'
 
-export function listEmployees(): EmployeeRow[] {
+export function listEmployees(input: ListEmployeesInput = {}): EmployeeRow[] {
   const db = getDb()
 
   return db
@@ -27,10 +29,13 @@ export function listEmployees(): EmployeeRow[] {
         e.updated_at
       FROM employees e
       LEFT JOIN departments d ON d.id = e.department_id
-      ORDER BY e.name
+      WHERE (@includeInactive = 1 OR e.active = 1)
+      ORDER BY e.id ASC
     `
     )
-    .all() as EmployeeRow[]
+    .all({
+      includeInactive: input.includeInactive ? 1 : 0
+    }) as EmployeeRow[]
 }
 
 export function createEmployee(input: CreateEmployeeInput): MutationResult {
@@ -200,6 +205,43 @@ export function setEmployeeActive(input: SetEmployeeActiveInput): MutationResult
   if (result.changes === 0) {
     throw new Error('الموظف غير موجود')
   }
+
+  return { success: true }
+}
+
+
+export function deleteEmployee(input: DeleteEmployeeInput): MutationResult {
+  const id = Number(input.id)
+
+  if (!id) {
+    throw new Error('الموظف غير صحيح')
+  }
+
+  const db = getDb()
+
+  const transaction = db.transaction(() => {
+    db.prepare(
+      `
+      DELETE FROM monthly_evaluations
+      WHERE employee_id = ?
+    `
+    ).run(id)
+
+    const result = db
+      .prepare(
+        `
+        DELETE FROM employees
+        WHERE id = ?
+      `
+      )
+      .run(id)
+
+    if (result.changes === 0) {
+      throw new Error('الموظف غير موجود')
+    }
+  })
+
+  transaction()
 
   return { success: true }
 }

@@ -406,3 +406,9 @@ th {
   color: #b91c1c;
   background: #fff5f5;
 }
+
+.inline-checkbox {
+  width: fit-content;
+  margin: 8px 0 14px;
+  font-weight: 700;
+}

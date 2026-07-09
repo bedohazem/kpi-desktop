@@ -9,10 +9,11 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   employees: {
-    list: () => ipcRenderer.invoke('employees:list'),
+    list: (input) => ipcRenderer.invoke('employees:list', input),
     create: (data) => ipcRenderer.invoke('employees:create', data),
     update: (data) => ipcRenderer.invoke('employees:update', data),
-    setActive: (data) => ipcRenderer.invoke('employees:set-active', data)
+    setActive: (data) => ipcRenderer.invoke('employees:set-active', data),
+    delete: (data) => ipcRenderer.invoke('employees:delete', data)
   },
 
   evaluations: {

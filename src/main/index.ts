@@ -40,6 +40,7 @@ function createWindow(): void {
   mainWindow.setMenuBarVisibility(false)
 
   mainWindow.on('ready-to-show', () => {
+    mainWindow?.maximize()
     mainWindow?.show()
   })
 

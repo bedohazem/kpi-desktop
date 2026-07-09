@@ -30,3 +30,11 @@ export type SetEmployeeActiveInput = {
   id: number
   active: boolean
 }
+
+export type ListEmployeesInput = {
+  includeInactive?: boolean
+}
+
+export type DeleteEmployeeInput = {
+  id: number
+}

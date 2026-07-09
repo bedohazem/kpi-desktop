@@ -18,9 +18,13 @@ export default function EmployeesPage(): ReactElement {
   const [isSavingEmployee, setIsSavingEmployee] = useState(false)
   const [employeeMessage, setEmployeeMessage] = useState('')
   const [editingEmployeeId, setEditingEmployeeId] = useState<number | null>(null)
+  const [showInactiveEmployees, setShowInactiveEmployees] = useState(false)
 
   async function loadEmployees(): Promise<void> {
-    const rows = await window.api.employees.list()
+    const rows = await window.api.employees.list({
+      includeInactive: showInactiveEmployees
+    })
+
     setEmployees(rows)
   }
 
@@ -110,7 +114,12 @@ export default function EmployeesPage(): ReactElement {
   useEffect(() => {
     let isMounted = true
 
-    Promise.all([window.api.departments.list(), window.api.employees.list()])
+    Promise.all([
+      window.api.departments.list(),
+      window.api.employees.list({
+        includeInactive: showInactiveEmployees
+      })
+    ])
       .then(([departmentRows, employeeRows]) => {
         if (isMounted) {
           setDepartments(departmentRows)
@@ -126,7 +135,7 @@ export default function EmployeesPage(): ReactElement {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [showInactiveEmployees])
 
   function resetEmployeeForm(): void {
     setEditingEmployeeId(null)
@@ -160,6 +169,34 @@ export default function EmployeesPage(): ReactElement {
     })
 
     await loadEmployees()
+  }
+
+
+  async function deleteEmployee(employee: Employee): Promise<void> {
+    const confirmed = window.confirm(
+      `هل تريد حذف الموظف "${employee.name}" نهائيًا؟ سيتم حذف تقييماته القديمة أيضًا.`
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      await window.api.employees.delete({
+        id: employee.id
+      })
+
+      setEmployeeMessage('تم حذف الموظف بنجاح')
+
+      if (editingEmployeeId === employee.id) {
+        resetEmployeeForm()
+      }
+
+      await loadEmployees()
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء حذف الموظف'
+      setEmployeeMessage(errorMessage)
+    }
   }
 
   return (
@@ -268,6 +305,15 @@ export default function EmployeesPage(): ReactElement {
           </label>
         </div>
 
+        <label className="checkbox-label inline-checkbox">
+          <input
+            type="checkbox"
+            checked={showInactiveEmployees}
+            onChange={(event) => setShowInactiveEmployees(event.target.checked)}
+          />
+          إظهار غير المفعلين
+        </label>
+
         <table>
           <thead>
             <tr>              
@@ -305,6 +351,9 @@ export default function EmployeesPage(): ReactElement {
 
                       <button className="small-button danger" onClick={() => toggleEmployeeActive(employee)}>
                         {employee.active ? 'تعطيل' : 'تفعيل'}
+                      </button>
+                      <button className="small-button danger" onClick={() => deleteEmployee(employee)}>
+                        حذف
                       </button>
                     </div>
                   </td>
