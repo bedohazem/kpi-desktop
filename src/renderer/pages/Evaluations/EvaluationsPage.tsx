@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactElement } from 'react'
 import type { Department, EvaluationEmployee } from '../../types/api'
+import { toast } from '../../utils/toast'
 
 type EvaluationRowState = EvaluationEmployee & {
   evaluationValueInput: string
@@ -18,13 +19,12 @@ export default function EvaluationsPage(): ReactElement {
 
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [message, setMessage] = useState('')
 
   async function loadRows(): Promise<void> {
-    setMessage('')
+    toast.info('جاري تحميل التقييمات...')
 
     if (!departmentId) {
-      setMessage('اختار الإدارة أولًا')
+      toast.warning('اختار الإدارة أولًا')
       return
     }
 
@@ -45,20 +45,20 @@ export default function EvaluationsPage(): ReactElement {
         }))
       )
 
-      setMessage('تم تحميل الموظفين')
+      toast.success('تم تحميل الموظفين')
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء تحميل التقييمات'
-      setMessage(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setIsLoading(false)
     }
   }
 
   async function saveEvaluations(): Promise<void> {
-    setMessage('')
+    toast.info('جاري حفظ التقييمات...')
 
     if (rows.length === 0) {
-      setMessage('لا توجد بيانات للحفظ')
+      toast.warning('لا توجد بيانات للحفظ')
       return
     }
 
@@ -75,21 +75,21 @@ export default function EvaluationsPage(): ReactElement {
         }))
       })
 
-      setMessage('تم حفظ تقييمات الشهر بنجاح')
+      toast.success('تم حفظ تقييمات الشهر بنجاح')
       await loadRows()
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء حفظ التقييمات'
-      setMessage(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setIsSaving(false)
     }
   }
 
   async function copyPreviousMonth(): Promise<void> {
-    setMessage('')
+    toast.info('جاري نسخ تقييمات الشهر السابق...')
 
     if (!departmentId) {
-      setMessage('اختار الإدارة أولًا')
+      toast.warning('اختار الإدارة أولًا')
       return
     }
 
@@ -106,11 +106,11 @@ export default function EvaluationsPage(): ReactElement {
         department_id: Number(departmentId)
       })
 
-      setMessage(`تم نسخ ${result.copied} تقييم من الشهر السابق`)
+      toast.success(`تم نسخ ${result.copied} تقييم من الشهر السابق`)
       await loadRows()
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء النسخ'
-      setMessage(errorMessage)
+      toast.error(errorMessage)
     }
   }
 
@@ -142,7 +142,7 @@ export default function EvaluationsPage(): ReactElement {
       })
       .catch(() => {
         if (isMounted) {
-          setMessage('حدث خطأ أثناء تحميل الإدارات')
+          toast.error('حدث خطأ أثناء تحميل الإدارات')
         }
       })
 
@@ -200,7 +200,6 @@ export default function EvaluationsPage(): ReactElement {
           </button>
         </div>
 
-        {message && <p className="message">{message}</p>}
       </section>
 
       <section className="card">

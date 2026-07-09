@@ -416,19 +416,24 @@ th {
 .toast-container {
   position: fixed;
   top: 18px;
-  left: 18px;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
   z-index: 99999;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 10px;
-  width: min(360px, calc(100vw - 36px));
+  width: min(420px, calc(100vw - 36px));
 }
 
 .toast-item {
+  width: 100%;
   border-radius: 12px;
   padding: 12px 14px;
   color: white;
   font-weight: 700;
+  text-align: center;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
   animation: toast-in 0.2s ease-out;
 }

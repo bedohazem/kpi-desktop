@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react'
 import type { Department, Employee, ReportsResult } from '../../types/api'
 import * as XLSX from 'xlsx'
+import { toast } from '../../utils/toast'
 
 const currentYear = new Date().getFullYear()
 
@@ -16,7 +17,6 @@ export default function ReportsPage(): ReactElement {
 
   const [report, setReport] = useState<ReportsResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [message, setMessage] = useState('')
 
   const filteredEmployees = useMemo(() => {
     if (!departmentId) {
@@ -27,7 +27,7 @@ export default function ReportsPage(): ReactElement {
   }, [employees, departmentId])
 
   async function generateReport(): Promise<void> {
-    setMessage('')
+    toast.info('جاري انشاء تقرير ...')
 
     try {
       setIsLoading(true)
@@ -41,10 +41,10 @@ export default function ReportsPage(): ReactElement {
       })
 
       setReport(result)
-      setMessage('تم إنشاء التقرير')
+      toast.success('تم إنشاء التقرير')
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء إنشاء التقرير'
-      setMessage(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -62,7 +62,7 @@ export default function ReportsPage(): ReactElement {
       })
       .catch(() => {
         if (isMounted) {
-          setMessage('حدث خطأ أثناء تحميل بيانات التقرير')
+          toast.error('حدث خطأ أثناء تحميل بيانات التقرير')
         }
       })
 
@@ -73,7 +73,7 @@ export default function ReportsPage(): ReactElement {
 
   function exportReportToExcel(): void {
   if (!report) {
-    setMessage('اعرض التقرير الأول قبل التصدير')
+    toast.warning('اعرض التقرير الأول قبل التصدير')
     return
   }
 
@@ -345,7 +345,7 @@ function buildReportPdfHtml(): string {
 
 async function exportReportToPdf(): Promise<void> {
   if (!report) {
-    setMessage('اعرض التقرير الأول قبل حفظ PDF')
+    toast.info('اعرض التقرير الأول قبل حفظ PDF')
     return
   }
 
@@ -356,14 +356,14 @@ async function exportReportToPdf(): Promise<void> {
     })
 
     if (result.canceled) {
-      setMessage('تم إلغاء حفظ PDF')
+      toast.info('تم إلغاء حفظ PDF')
       return
     }
 
-    setMessage('تم حفظ ملف PDF بنجاح')
+    toast.success('تم حفظ ملف PDF بنجاح')
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء حفظ PDF'
-    setMessage(errorMessage)
+    toast.error(errorMessage)
   }
 }
 
@@ -445,7 +445,6 @@ async function exportReportToPdf(): Promise<void> {
           </button>
         </div>
 
-        {message && <p className="message">{message}</p>}
       </section>
 
       {report && (

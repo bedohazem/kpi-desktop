@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactElement } from 'react'
 import type { Department } from '../../types/api'
+import { toast } from '../../utils/toast'
 
 export default function DepartmentsPage(): ReactElement {
   const [departments, setDepartments] = useState<Department[]>([])
@@ -7,7 +8,6 @@ export default function DepartmentsPage(): ReactElement {
   const [parentId, setParentId] = useState('')
   const [departmentNotes, setDepartmentNotes] = useState('')
   const [isSavingDepartment, setIsSavingDepartment] = useState(false)
-  const [departmentMessage, setDepartmentMessage] = useState('')
 
   async function loadDepartments(): Promise<void> {
     const rows = await window.api.departments.list()
@@ -15,10 +15,10 @@ export default function DepartmentsPage(): ReactElement {
   }
 
   async function saveDepartment(): Promise<void> {
-    setDepartmentMessage('')
+    toast.info('جاري حفظ الإدارة...')
 
     if (!departmentName.trim()) {
-      setDepartmentMessage('اكتب اسم الإدارة')
+      toast.warning('اكتب اسم الإدارة')
       return
     }
 
@@ -35,12 +35,12 @@ export default function DepartmentsPage(): ReactElement {
       setDepartmentName('')
       setParentId('')
       setDepartmentNotes('')
-      setDepartmentMessage('تم حفظ الإدارة بنجاح')
+      toast.success('تم حفظ الإدارة بنجاح')
 
       await loadDepartments()
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء حفظ الإدارة'
-      setDepartmentMessage(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setIsSavingDepartment(false)
     }
@@ -58,7 +58,7 @@ export default function DepartmentsPage(): ReactElement {
       })
       .catch(() => {
         if (isMounted) {
-          setDepartmentMessage('حدث خطأ أثناء تحميل الإدارات')
+          toast.error('حدث خطأ أثناء تحميل الإدارات')
         }
       })
 
@@ -106,7 +106,6 @@ export default function DepartmentsPage(): ReactElement {
           {isSavingDepartment ? 'جاري الحفظ...' : 'حفظ الإدارة'}
         </button>
 
-        {departmentMessage && <p className="message">{departmentMessage}</p>}
       </section>
 
       <section className="card">
