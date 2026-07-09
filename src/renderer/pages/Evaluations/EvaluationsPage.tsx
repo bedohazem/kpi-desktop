@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactElement } from 'react'
 import type { Department, EvaluationEmployee } from '../../types/api'
 import { toast } from '../../utils/toast'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
@@ -20,7 +20,28 @@ export default function EvaluationsPage(): ReactElement {
 
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const evaluationInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
   const [copyDialogOpen, setCopyDialogOpen] = useState(false)
+
+
+  const evaluationSummary = useMemo(() => {
+    const values = rows
+      .map((row) => row.evaluationValueInput.trim())
+      .filter(Boolean)
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value))
+
+    const total = values.reduce((sum, value) => sum + value, 0)
+    const average = values.length > 0 ? total / values.length : 0
+    const missing = rows.filter((row) => !row.evaluationValueInput.trim()).length
+
+    return {
+      total,
+      average,
+      entered: values.length,
+      missing
+    }
+  }, [rows])
 
   async function loadRows(): Promise<void> {
     toast.info('جاري تحميل التقييمات...')
@@ -152,6 +173,29 @@ export default function EvaluationsPage(): ReactElement {
     setCopyDialogOpen(true)
   }
 
+  function focusNextEvaluationInput(currentIndex: number): void {
+    const nextRow = rows[currentIndex + 1]
+
+    if (!nextRow) {
+      return
+    }
+
+    evaluationInputRefs.current[nextRow.employee_id]?.focus()
+    evaluationInputRefs.current[nextRow.employee_id]?.select()
+  }
+
+  function handleEvaluationKeyDown(
+    event: KeyboardEvent<HTMLInputElement>,
+    currentIndex: number
+  ): void {
+    if (event.key !== 'Enter') {
+      return
+    }
+
+    event.preventDefault()
+    focusNextEvaluationInput(currentIndex)
+  }
+
   return (
     <>
       <section className="card">
@@ -203,6 +247,37 @@ export default function EvaluationsPage(): ReactElement {
 
       </section>
 
+      {rows.length > 0 && (
+        <section className="card">
+          <div className="evaluation-summary-grid">
+            <div className="evaluation-summary-card">
+              <span>عدد الموظفين</span>
+              <strong>{rows.length}</strong>
+            </div>
+
+            <div className="evaluation-summary-card success-card">
+              <span>تم إدخال تقييم</span>
+              <strong>{evaluationSummary.entered}</strong>
+            </div>
+
+            <div className="evaluation-summary-card warning-card">
+              <span>ناقص تقييم</span>
+              <strong>{evaluationSummary.missing}</strong>
+            </div>
+
+            <div className="evaluation-summary-card">
+              <span>الإجمالي</span>
+              <strong>{evaluationSummary.total.toFixed(2)}</strong>
+            </div>
+
+            <div className="evaluation-summary-card success-card">
+              <span>المتوسط</span>
+              <strong>{evaluationSummary.average.toFixed(2)}</strong>
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="card">
         <div className="section-header">
           <h2>قائمة تقييمات الشهر</h2>
@@ -212,7 +287,8 @@ export default function EvaluationsPage(): ReactElement {
         <div className="table-wrapper">
           <table>
             <thead>
-              <tr>                
+              <tr>       
+                <th>م</th>         
                 <th>الاسم</th>
                 <th>الوظيفة</th>
                 <th>الإدارة</th>
@@ -224,19 +300,25 @@ export default function EvaluationsPage(): ReactElement {
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={5}>اختار الشهر والإدارة ثم اضغط تحميل الموظفين</td>
+                  <td colSpan={6}>اختار الشهر والإدارة ثم اضغط تحميل الموظفين</td>
                 </tr>
               ) : (
-                rows.map((row) => (
+                rows.map((row, index) => (
                   <tr key={row.employee_id}>
+                    <td>{index + 1}</td>
                     <td>{row.employee_name}</td>
                     <td>{row.job_title || '-'}</td>
                     <td>{row.department_name || '-'}</td>
                     <td>
                       <input
+                        ref={(element) => {
+                          evaluationInputRefs.current[row.employee_id] = element
+                        }}
                         className="table-input"
                         value={row.evaluationValueInput}
                         inputMode="decimal"
+                        onFocus={(event) => event.target.select()}
+                        onKeyDown={(event) => handleEvaluationKeyDown(event, index)}
                         onChange={(event) => updateEvaluationValue(row.employee_id, event.target.value)}
                       />
                     </td>
