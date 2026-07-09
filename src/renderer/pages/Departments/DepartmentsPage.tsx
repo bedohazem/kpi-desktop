@@ -1,22 +1,47 @@
 import { useEffect, useState, type ReactElement } from 'react'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import type { Department } from '../../types/api'
 import { toast } from '../../utils/toast'
 
 export default function DepartmentsPage(): ReactElement {
   const [departments, setDepartments] = useState<Department[]>([])
+
   const [departmentName, setDepartmentName] = useState('')
   const [parentId, setParentId] = useState('')
   const [departmentNotes, setDepartmentNotes] = useState('')
+  const [departmentActive, setDepartmentActive] = useState(true)
+
   const [isSavingDepartment, setIsSavingDepartment] = useState(false)
+  const [editingDepartmentId, setEditingDepartmentId] = useState<number | null>(null)
+  const [showInactiveDepartments, setShowInactiveDepartments] = useState(false)
+  const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null)
 
   async function loadDepartments(): Promise<void> {
-    const rows = await window.api.departments.list()
+    const rows = await window.api.departments.list({
+      includeInactive: showInactiveDepartments
+    })
+
     setDepartments(rows)
   }
 
-  async function saveDepartment(): Promise<void> {
-    toast.info('جاري حفظ الإدارة...')
+  function resetDepartmentForm(): void {
+    setEditingDepartmentId(null)
+    setDepartmentName('')
+    setParentId('')
+    setDepartmentNotes('')
+    setDepartmentActive(true)
+  }
 
+  function startEditDepartment(department: Department): void {
+    setEditingDepartmentId(department.id)
+    setDepartmentName(department.name)
+    setParentId(department.parent_id ? String(department.parent_id) : '')
+    setDepartmentNotes(department.notes || '')
+    setDepartmentActive(Boolean(department.active))
+    toast.info('تعديل بيانات الإدارة')
+  }
+
+  async function saveDepartment(): Promise<void> {
     if (!departmentName.trim()) {
       toast.warning('اكتب اسم الإدارة')
       return
@@ -25,18 +50,28 @@ export default function DepartmentsPage(): ReactElement {
     try {
       setIsSavingDepartment(true)
 
-      await window.api.departments.create({
-        name: departmentName,
-        parent_id: parentId ? Number(parentId) : null,
-        notes: departmentNotes,
-        active: true
-      })
+      if (editingDepartmentId) {
+        await window.api.departments.update({
+          id: editingDepartmentId,
+          name: departmentName,
+          parent_id: parentId ? Number(parentId) : null,
+          notes: departmentNotes,
+          active: departmentActive
+        })
 
-      setDepartmentName('')
-      setParentId('')
-      setDepartmentNotes('')
-      toast.success('تم حفظ الإدارة بنجاح')
+        toast.success('تم تعديل الإدارة بنجاح')
+      } else {
+        await window.api.departments.create({
+          name: departmentName,
+          parent_id: parentId ? Number(parentId) : null,
+          notes: departmentNotes,
+          active: departmentActive
+        })
 
+        toast.success('تم حفظ الإدارة بنجاح')
+      }
+
+      resetDepartmentForm()
       await loadDepartments()
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء حفظ الإدارة'
@@ -46,11 +81,54 @@ export default function DepartmentsPage(): ReactElement {
     }
   }
 
+  async function toggleDepartmentActive(department: Department): Promise<void> {
+    const nextActive = !department.active
+
+    try {
+      await window.api.departments.setActive({
+        id: department.id,
+        active: nextActive
+      })
+
+      toast.success(nextActive ? 'تم تفعيل الإدارة' : 'تم تعطيل الإدارة')
+      await loadDepartments()
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء تغيير حالة الإدارة'
+      toast.error(errorMessage)
+    }
+  }
+
+  async function confirmDeleteDepartment(): Promise<void> {
+    if (!departmentToDelete) {
+      return
+    }
+
+    try {
+      await window.api.departments.delete({
+        id: departmentToDelete.id
+      })
+
+      toast.success('تم حذف الإدارة بنجاح')
+
+      if (editingDepartmentId === departmentToDelete.id) {
+        resetDepartmentForm()
+      }
+
+      setDepartmentToDelete(null)
+      await loadDepartments()
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء حذف الإدارة'
+      toast.error(errorMessage)
+    }
+  }
+
   useEffect(() => {
     let isMounted = true
 
     window.api.departments
-      .list()
+      .list({
+        includeInactive: showInactiveDepartments
+      })
       .then((rows) => {
         if (isMounted) {
           setDepartments(rows)
@@ -65,12 +143,12 @@ export default function DepartmentsPage(): ReactElement {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [showInactiveDepartments])
 
   return (
     <>
       <section className="card">
-        <h2>إضافة إدارة</h2>
+        <h2>{editingDepartmentId ? 'تعديل إدارة' : 'إضافة إدارة'}</h2>
 
         <div className="form-grid">
           <label>
@@ -85,11 +163,13 @@ export default function DepartmentsPage(): ReactElement {
             تابعة لـ
             <select value={parentId} onChange={(event) => setParentId(event.target.value)}>
               <option value="">بدون إدارة رئيسية</option>
-              {departments.map((department) => (
-                <option key={department.id} value={department.id}>
-                  {department.name}
-                </option>
-              ))}
+              {departments
+                .filter((department) => department.id !== editingDepartmentId)
+                .map((department) => (
+                  <option key={department.id} value={department.id}>
+                    {department.name}
+                  </option>
+                ))}
             </select>
           </label>
 
@@ -100,16 +180,48 @@ export default function DepartmentsPage(): ReactElement {
               onChange={(event) => setDepartmentNotes(event.target.value)}
             />
           </label>
+
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={departmentActive}
+              onChange={(event) => setDepartmentActive(event.target.checked)}
+            />
+            إدارة نشطة
+          </label>
         </div>
 
-        <button className="primary-button" disabled={isSavingDepartment} onClick={saveDepartment}>
-          {isSavingDepartment ? 'جاري الحفظ...' : 'حفظ الإدارة'}
-        </button>
+        <div className="actions-row">
+          <button className="primary-button" disabled={isSavingDepartment} onClick={saveDepartment}>
+            {isSavingDepartment
+              ? 'جاري الحفظ...'
+              : editingDepartmentId
+                ? 'تعديل الإدارة'
+                : 'حفظ الإدارة'}
+          </button>
 
+          {editingDepartmentId && (
+            <button className="secondary-button" type="button" onClick={resetDepartmentForm}>
+              إلغاء التعديل
+            </button>
+          )}
+        </div>
       </section>
 
       <section className="card">
-        <h2>قائمة الإدارات</h2>
+        <div className="section-header">
+          <h2>قائمة الإدارات</h2>
+          <span>عدد الإدارات: {departments.length}</span>
+        </div>
+
+        <label className="checkbox-label inline-checkbox">
+          <input
+            type="checkbox"
+            checked={showInactiveDepartments}
+            onChange={(event) => setShowInactiveDepartments(event.target.checked)}
+          />
+          إظهار غير النشطة
+        </label>
 
         <table>
           <thead>
@@ -118,13 +230,14 @@ export default function DepartmentsPage(): ReactElement {
               <th>تابعة لـ</th>
               <th>ملاحظات</th>
               <th>الحالة</th>
+              <th>إجراءات</th>
             </tr>
           </thead>
 
           <tbody>
             {departments.length === 0 ? (
               <tr>
-                <td colSpan={4}>لا توجد إدارات حتى الآن</td>
+                <td colSpan={5}>لا توجد إدارات حتى الآن</td>
               </tr>
             ) : (
               departments.map((department) => (
@@ -133,12 +246,46 @@ export default function DepartmentsPage(): ReactElement {
                   <td>{department.parent_name || '-'}</td>
                   <td>{department.notes || '-'}</td>
                   <td>{department.active ? 'نشطة' : 'غير نشطة'}</td>
+                  <td>
+                    <div className="table-actions">
+                      <button className="small-button" onClick={() => startEditDepartment(department)}>
+                        تعديل
+                      </button>
+
+                      <button
+                        className={department.active ? 'small-button danger' : 'small-button success'}
+                        onClick={() => toggleDepartmentActive(department)}
+                      >
+                        {department.active ? 'تعطيل' : 'تفعيل'}
+                      </button>
+
+                      <button
+                        className="small-button danger"
+                        onClick={() => setDepartmentToDelete(department)}
+                      >
+                        حذف
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </section>
+
+      <ConfirmDialog
+        open={Boolean(departmentToDelete)}
+        title="حذف إدارة"
+        message={`هل تريد حذف الإدارة "${departmentToDelete?.name || ''}" نهائيًا؟`}
+        confirmText="حذف نهائي"
+        cancelText="إلغاء"
+        danger
+        onConfirm={() => {
+          void confirmDeleteDepartment()
+        }}
+        onCancel={() => setDepartmentToDelete(null)}
+      />
     </>
   )
 }

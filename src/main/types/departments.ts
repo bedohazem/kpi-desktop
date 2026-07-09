@@ -15,3 +15,20 @@ export type CreateDepartmentInput = {
   notes: string
   active: boolean
 }
+
+export type UpdateDepartmentInput = CreateDepartmentInput & {
+  id: number
+}
+
+export type SetDepartmentActiveInput = {
+  id: number
+  active: boolean
+}
+
+export type ListDepartmentsInput = {
+  includeInactive?: boolean
+}
+
+export type DeleteDepartmentInput = {
+  id: number
+}

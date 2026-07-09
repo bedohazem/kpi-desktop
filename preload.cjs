@@ -4,8 +4,11 @@ contextBridge.exposeInMainWorld('api', {
   dbTest: () => ipcRenderer.invoke('db:test'),
 
   departments: {
-    list: () => ipcRenderer.invoke('departments:list'),
-    create: (data) => ipcRenderer.invoke('departments:create', data)
+    list: (input) => ipcRenderer.invoke('departments:list', input),
+    create: (data) => ipcRenderer.invoke('departments:create', data),
+    update: (data) => ipcRenderer.invoke('departments:update', data),
+    setActive: (data) => ipcRenderer.invoke('departments:set-active', data),
+    delete: (data) => ipcRenderer.invoke('departments:delete', data)
   },
 
   employees: {

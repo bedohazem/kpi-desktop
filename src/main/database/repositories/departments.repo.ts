@@ -1,8 +1,15 @@
 import { getDb } from '../db'
 import type { MutationResult } from '../../types/common'
-import type { CreateDepartmentInput, DepartmentRow } from '../../types/departments'
+import type {
+  CreateDepartmentInput,
+  DeleteDepartmentInput,
+  DepartmentRow,
+  ListDepartmentsInput,
+  SetDepartmentActiveInput,
+  UpdateDepartmentInput
+} from '../../types/departments'
 
-export function listDepartments(): DepartmentRow[] {
+export function listDepartments(input: ListDepartmentsInput = {}): DepartmentRow[] {
   const db = getDb()
 
   return db
@@ -19,10 +26,13 @@ export function listDepartments(): DepartmentRow[] {
         d.updated_at
       FROM departments d
       LEFT JOIN departments p ON p.id = d.parent_id
-      ORDER BY d.name
+      WHERE (@includeInactive = 1 OR d.active = 1)
+      ORDER BY d.id ASC
     `
     )
-    .all() as DepartmentRow[]
+    .all({
+      includeInactive: input.includeInactive ? 1 : 0
+    }) as DepartmentRow[]
 }
 
 export function createDepartment(input: CreateDepartmentInput): MutationResult {
@@ -52,6 +62,145 @@ export function createDepartment(input: CreateDepartmentInput): MutationResult {
     }
 
     throw error
+  }
+
+  return { success: true }
+}
+
+export function updateDepartment(input: UpdateDepartmentInput): MutationResult {
+  const id = Number(input.id)
+  const name = input.name.trim()
+
+  if (!id) {
+    throw new Error('الإدارة غير صحيحة')
+  }
+
+  if (!name) {
+    throw new Error('اسم الإدارة مطلوب')
+  }
+
+  const db = getDb()
+
+  const existingName = db
+    .prepare(
+      `
+      SELECT id
+      FROM departments
+      WHERE name = ?
+        AND id <> ?
+      LIMIT 1
+    `
+    )
+    .get(name, id) as { id: number } | undefined
+
+  if (existingName) {
+    throw new Error('اسم الإدارة موجود قبل كده')
+  }
+
+  if (input.parent_id === id) {
+    throw new Error('الإدارة لا يمكن أن تكون تابعة لنفسها')
+  }
+
+  const result = db
+    .prepare(
+      `
+      UPDATE departments
+      SET
+        name = @name,
+        parent_id = @parent_id,
+        notes = @notes,
+        active = @active,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = @id
+    `
+    )
+    .run({
+      id,
+      name,
+      parent_id: input.parent_id,
+      notes: input.notes.trim(),
+      active: input.active ? 1 : 0
+    })
+
+  if (result.changes === 0) {
+    throw new Error('الإدارة غير موجودة')
+  }
+
+  return { success: true }
+}
+
+export function setDepartmentActive(input: SetDepartmentActiveInput): MutationResult {
+  const id = Number(input.id)
+
+  if (!id) {
+    throw new Error('الإدارة غير صحيحة')
+  }
+
+  const db = getDb()
+
+  const result = db
+    .prepare(
+      `
+      UPDATE departments
+      SET
+        active = @active,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = @id
+    `
+    )
+    .run({
+      id,
+      active: input.active ? 1 : 0
+    })
+
+  if (result.changes === 0) {
+    throw new Error('الإدارة غير موجودة')
+  }
+
+  return { success: true }
+}
+
+export function deleteDepartment(input: DeleteDepartmentInput): MutationResult {
+  const id = Number(input.id)
+
+  if (!id) {
+    throw new Error('الإدارة غير صحيحة')
+  }
+
+  const db = getDb()
+
+  const employeesCount = db
+    .prepare(
+      `
+      SELECT COUNT(*) AS count
+      FROM employees
+      WHERE department_id = ?
+    `
+    )
+    .get(id) as { count: number }
+
+  if (employeesCount.count > 0) {
+    throw new Error('لا يمكن حذف الإدارة لأنها مرتبطة بموظفين')
+  }
+
+  const childrenCount = db
+    .prepare(
+      `
+      SELECT COUNT(*) AS count
+      FROM departments
+      WHERE parent_id = ?
+    `
+    )
+    .get(id) as { count: number }
+
+  if (childrenCount.count > 0) {
+    throw new Error('لا يمكن حذف الإدارة لأنها تحتوي على إدارات تابعة')
+  }
+
+  const result = db.prepare(`DELETE FROM departments WHERE id = ?`).run(id)
+
+  if (result.changes === 0) {
+    throw new Error('الإدارة غير موجودة')
   }
 
   return { success: true }
