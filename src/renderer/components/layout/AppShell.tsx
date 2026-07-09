@@ -1,9 +1,11 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import type { ReactElement } from 'react'
+import ToastContainer from '../ui/ToastContainer'
 
 export default function AppShell(): ReactElement {
   return (
     <div className="app">
+      <ToastContainer />
       <header className="app-header">
         <div>
           <h1>برنامج التقييمات الشهرية</h1>

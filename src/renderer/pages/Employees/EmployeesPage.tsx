@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react'
 import type { Department, Employee } from '../../types/api'
+import { toast } from '../../utils/toast'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 
 export default function EmployeesPage(): ReactElement {
   const [departments, setDepartments] = useState<Department[]>([])
@@ -16,7 +18,7 @@ export default function EmployeesPage(): ReactElement {
   const [employeeSearch, setEmployeeSearch] = useState('')
   const [employeeDepartmentFilter, setEmployeeDepartmentFilter] = useState('')
   const [isSavingEmployee, setIsSavingEmployee] = useState(false)
-  const [employeeMessage, setEmployeeMessage] = useState('')
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null)
   const [editingEmployeeId, setEditingEmployeeId] = useState<number | null>(null)
   const [showInactiveEmployees, setShowInactiveEmployees] = useState(false)
 
@@ -29,18 +31,18 @@ export default function EmployeesPage(): ReactElement {
   }
 
   async function saveEmployee(): Promise<void> {
-    setEmployeeMessage('')
+    toast.info('جارٍ حفظ بيانات الموظف...')
 
 
     if (!employeeName.trim()) {
-      setEmployeeMessage('اكتب اسم الموظف')
+      toast.error('اكتب اسم الموظف')
       return
     }
 
     const cleanNationalId = nationalId.trim()
 
     if (!/^\d{14}$/.test(cleanNationalId)) {
-      setEmployeeMessage('الرقم القومي لازم يكون 14 رقم بالظبط')
+      toast.error('الرقم القومي لازم يكون 14 رقم بالظبط')
       return
     }
 
@@ -59,7 +61,7 @@ export default function EmployeesPage(): ReactElement {
         active: employeeActive
       })
 
-      setEmployeeMessage('تم تعديل بيانات الموظف بنجاح')
+      toast.success('تم تعديل بيانات الموظف بنجاح')
     } else {
       await window.api.employees.create({
         name: employeeName,
@@ -71,7 +73,7 @@ export default function EmployeesPage(): ReactElement {
         active: employeeActive
       })
 
-      setEmployeeMessage('تم حفظ الموظف بنجاح')
+      toast.success('تم حفظ الموظف بنجاح')
     }
 
     resetEmployeeForm()
@@ -84,12 +86,12 @@ export default function EmployeesPage(): ReactElement {
       setEmployeeDepartmentId('')
       setEmployeeNotes('')
       setEmployeeActive(true)
-      setEmployeeMessage('تم حفظ الموظف بنجاح')
+      toast.success('تم حفظ الموظف بنجاح')
 
       await loadEmployees()
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء حفظ الموظف'
-      setEmployeeMessage(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setIsSavingEmployee(false)
     }
@@ -128,7 +130,7 @@ export default function EmployeesPage(): ReactElement {
       })
       .catch(() => {
         if (isMounted) {
-          setEmployeeMessage('حدث خطأ أثناء تحميل بيانات الموظفين')
+          toast.error('حدث خطأ أثناء تحميل بيانات الموظفين')
         }
       })
 
@@ -157,7 +159,7 @@ export default function EmployeesPage(): ReactElement {
     setEmployeeDepartmentId(employee.department_id ? String(employee.department_id) : '')
     setEmployeeNotes(employee.notes || '')
     setEmployeeActive(Boolean(employee.active))
-    setEmployeeMessage('تعديل بيانات الموظف')
+    toast.info('تعديل بيانات الموظف')
   }
 
   async function toggleEmployeeActive(employee: Employee): Promise<void> {
@@ -172,30 +174,27 @@ export default function EmployeesPage(): ReactElement {
   }
 
 
-  async function deleteEmployee(employee: Employee): Promise<void> {
-    const confirmed = window.confirm(
-      `هل تريد حذف الموظف "${employee.name}" نهائيًا؟ سيتم حذف تقييماته القديمة أيضًا.`
-    )
-
-    if (!confirmed) {
+  async function confirmDeleteEmployee(): Promise<void> {
+    if (!employeeToDelete) {
       return
     }
 
     try {
       await window.api.employees.delete({
-        id: employee.id
+        id: employeeToDelete.id
       })
 
-      setEmployeeMessage('تم حذف الموظف بنجاح')
+      toast.success('تم حذف الموظف بنجاح')
 
-      if (editingEmployeeId === employee.id) {
+      if (editingEmployeeId === employeeToDelete.id) {
         resetEmployeeForm()
       }
 
+      setEmployeeToDelete(null)
       await loadEmployees()
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء حذف الموظف'
-      setEmployeeMessage(errorMessage)
+      toast.error(errorMessage)
     }
   }
 
@@ -274,7 +273,6 @@ export default function EmployeesPage(): ReactElement {
           </button>
         )}
 
-        {employeeMessage && <p className="message">{employeeMessage}</p>}
       </section>
 
       <section className="card">
@@ -349,10 +347,13 @@ export default function EmployeesPage(): ReactElement {
                         تعديل
                       </button>
 
-                      <button className="small-button danger" onClick={() => toggleEmployeeActive(employee)}>
+                      <button
+                        className={employee.active ? 'small-button danger' : 'small-button success'}
+                        onClick={() => toggleEmployeeActive(employee)}
+                      >
                         {employee.active ? 'تعطيل' : 'تفعيل'}
                       </button>
-                      <button className="small-button danger" onClick={() => deleteEmployee(employee)}>
+                      <button className="small-button danger" onClick={() => setEmployeeToDelete(employee)}>
                         حذف
                       </button>
                     </div>
@@ -363,6 +364,19 @@ export default function EmployeesPage(): ReactElement {
           </tbody>
         </table>
       </section>
+
+      <ConfirmDialog
+        open={Boolean(employeeToDelete)}
+        title="حذف موظف"
+        message={`هل تريد حذف الموظف "${employeeToDelete?.name || ''}" نهائيًا؟ سيتم حذف تقييماته القديمة أيضًا.`}
+        confirmText="حذف نهائي"
+        cancelText="إلغاء"
+        danger
+        onConfirm={() => {
+          void confirmDeleteEmployee()
+        }}
+        onCancel={() => setEmployeeToDelete(null)}
+      />
     </>
   )
 }
