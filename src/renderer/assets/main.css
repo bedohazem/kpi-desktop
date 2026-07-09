@@ -46,9 +46,22 @@ select {
 }
 
 .page {
-  padding: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 20px 24px;
+}
+
+.card {
+  width: 100%;
+}
+
+.form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.table-wrapper {
+  width: 100%;
 }
 
 .card {
@@ -66,7 +79,7 @@ select {
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 14px;
   margin-bottom: 16px;
 }
