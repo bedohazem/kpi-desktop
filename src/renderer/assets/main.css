@@ -525,3 +525,39 @@ th {
   cursor: pointer;
   font-weight: 700;
 }
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.dashboard-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 18px;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dashboard-card span {
+  color: #4b5563;
+  font-weight: 700;
+}
+
+.dashboard-card strong {
+  font-size: 30px;
+  color: #111827;
+}
+
+.dashboard-card.success-card {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.dashboard-card.warning-card {
+  background: #fffbeb;
+  border-color: #fde68a;
+}

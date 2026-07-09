@@ -5,6 +5,7 @@ import { registerDepartmentsIpc } from './ipc/departments.ipc'
 import { registerEmployeesIpc } from './ipc/employees.ipc'
 import { registerEvaluationsIpc } from './ipc/evaluations.ipc'
 import { registerReportsIpc } from './ipc/reports.ipc'
+import { registerDashboardIpc } from './ipc/dashboard.ipc'
 
 type DbTestResult = {
   ok: boolean
@@ -81,6 +82,7 @@ app.whenReady().then(() => {
   registerEmployeesIpc()
   registerEvaluationsIpc()
   registerReportsIpc()
+  registerDashboardIpc()
   createWindow()
 
   app.on('activate', () => {

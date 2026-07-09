@@ -4,6 +4,19 @@ export type DbTestResult = {
   departmentsCount: number
 }
 
+export type DashboardStats = {
+  currentMonth: number
+  currentYear: number
+  activeDepartmentsCount: number
+  inactiveDepartmentsCount: number
+  activeEmployeesCount: number
+  inactiveEmployeesCount: number
+  currentMonthEvaluationsCount: number
+  currentMonthMissingEvaluationsCount: number
+  currentMonthTotal: number
+  currentMonthAverage: number
+}
+
 export type Department = {
   id: number
   name: string
@@ -172,6 +185,9 @@ export type DeleteEmployeeInput = {
 
 export type AppApi = {
   dbTest: () => Promise<DbTestResult>
+  dashboard: {
+    stats: () => Promise<DashboardStats>
+  }
   departments: {
     list: (input?: ListDepartmentsInput) => Promise<Department[]>
     create: (data: CreateDepartmentInput) => Promise<MutationResult>

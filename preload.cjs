@@ -2,6 +2,10 @@ const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('api', {
   dbTest: () => ipcRenderer.invoke('db:test'),
+  
+  dashboard: {
+    stats: () => ipcRenderer.invoke('dashboard:stats')
+  },
 
   departments: {
     list: (input) => ipcRenderer.invoke('departments:list', input),
