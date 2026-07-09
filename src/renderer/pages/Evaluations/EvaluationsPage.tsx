@@ -20,6 +20,9 @@ export default function EvaluationsPage(): ReactElement {
 
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [evaluationSearch, setEvaluationSearch] = useState('')
+  const [showMissingOnly, setShowMissingOnly] = useState(false)
+  const [activeEvaluationEmployeeId, setActiveEvaluationEmployeeId] = useState<number | null>(null)
   const evaluationInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
   const [copyDialogOpen, setCopyDialogOpen] = useState(false)
 
@@ -43,13 +46,27 @@ export default function EvaluationsPage(): ReactElement {
     }
   }, [rows])
 
+  const visibleEvaluationRows = useMemo(() => {
+    const searchText = evaluationSearch.trim().toLowerCase()
+
+    return rows.filter((row) => {
+      const matchesSearch =
+        !searchText ||
+        row.employee_name.toLowerCase().includes(searchText) ||
+        (row.job_title || '').toLowerCase().includes(searchText) ||
+        (row.department_name || '').toLowerCase().includes(searchText)
+
+      const matchesMissing =
+        !showMissingOnly ||
+        !row.evaluationValueInput.trim() ||
+        row.employee_id === activeEvaluationEmployeeId
+
+      return matchesSearch && matchesMissing
+    })
+  }, [rows, evaluationSearch, showMissingOnly, activeEvaluationEmployeeId])
+
   async function loadRows(): Promise<void> {
     toast.info('جاري تحميل التقييمات...')
-
-    if (!departmentId) {
-      toast.warning('اختار الإدارة أولًا')
-      return
-    }
 
     try {
       setIsLoading(true)
@@ -57,7 +74,7 @@ export default function EvaluationsPage(): ReactElement {
       const evaluationRows = await window.api.evaluations.listEmployees({
         month: Number(month),
         year: Number(year),
-        department_id: Number(departmentId)
+        department_id: departmentId ? Number(departmentId) : null
       })
 
       setRows(
@@ -116,7 +133,7 @@ export default function EvaluationsPage(): ReactElement {
       const result = await window.api.evaluations.copyPreviousMonth({
         month: Number(month),
         year: Number(year),
-        department_id: Number(departmentId)
+        department_id: departmentId ? Number(departmentId) : null
       })
 
       toast.success(`تم نسخ ${result.copied} تقييم من الشهر السابق`)
@@ -165,16 +182,11 @@ export default function EvaluationsPage(): ReactElement {
   }, [])
 
   function requestCopyPreviousMonth(): void {
-    if (!departmentId) {
-      toast.warning('اختار الإدارة أولًا')
-      return
-    }
-
     setCopyDialogOpen(true)
   }
 
   function focusNextEvaluationInput(currentIndex: number): void {
-    const nextRow = rows[currentIndex + 1]
+    const nextRow = visibleEvaluationRows[currentIndex + 1]
 
     if (!nextRow) {
       return
@@ -221,7 +233,7 @@ export default function EvaluationsPage(): ReactElement {
           <label>
             الإدارة
             <select value={departmentId} onChange={(event) => setDepartmentId(event.target.value)}>
-              <option value="">اختار الإدارة</option>
+              <option value="">كل الإدارات</option>
               {departments.map((department) => (
                 <option key={department.id} value={department.id}>
                   {department.name}
@@ -279,9 +291,35 @@ export default function EvaluationsPage(): ReactElement {
       )}
 
       <section className="card">
+        {rows.length > 0 && (
+          <section className="card">
+            <div className="form-grid">
+              <label>
+                بحث داخل الموظفين
+                <input
+                  value={evaluationSearch}
+                  placeholder="اكتب اسم الموظف أو الوظيفة أو الإدارة"
+                  onChange={(event) => setEvaluationSearch(event.target.value)}
+                />
+              </label>
+
+              <label className="checkbox-label inline-checkbox">
+                <input
+                  type="checkbox"
+                  checked={showMissingOnly}
+                  onChange={(event) => setShowMissingOnly(event.target.checked)}
+                />
+                إظهار الناقص تقييمهم فقط
+              </label>
+            </div>
+          </section>
+        )}
+
         <div className="section-header">
           <h2>قائمة تقييمات الشهر</h2>
-          <span>عدد الموظفين: {rows.length}</span>
+          <span>
+            المعروض: {visibleEvaluationRows.length} / الإجمالي: {rows.length}
+          </span>
         </div>
 
         <div className="table-wrapper">
@@ -298,12 +336,14 @@ export default function EvaluationsPage(): ReactElement {
             </thead>
 
             <tbody>
-              {rows.length === 0 ? (
+              {visibleEvaluationRows.length === 0 ? (
                 <tr>
-                  <td colSpan={6}>اختار الشهر والإدارة ثم اضغط تحميل الموظفين</td>
+                  <td colSpan={6}>
+                    {rows.length === 0 ? 'اختار الشهر ثم اضغط تحميل الموظفين' : 'لا توجد نتائج مطابقة للبحث'}
+                  </td>
                 </tr>
               ) : (
-                rows.map((row, index) => (
+                visibleEvaluationRows.map((row, index) => (
                   <tr key={row.employee_id}>
                     <td>{index + 1}</td>
                     <td>{row.employee_name}</td>
@@ -317,7 +357,13 @@ export default function EvaluationsPage(): ReactElement {
                         className="table-input"
                         value={row.evaluationValueInput}
                         inputMode="decimal"
-                        onFocus={(event) => event.target.select()}
+                        onFocus={(event) => {
+                          setActiveEvaluationEmployeeId(row.employee_id)
+                          event.target.select()
+                        }}
+                        onBlur={() => {
+                          setActiveEvaluationEmployeeId(null)
+                        }}
                         onKeyDown={(event) => handleEvaluationKeyDown(event, index)}
                         onChange={(event) => updateEvaluationValue(row.employee_id, event.target.value)}
                       />
