@@ -31,9 +31,6 @@ export default function EmployeesPage(): ReactElement {
   }
 
   async function saveEmployee(): Promise<void> {
-    toast.info('جارٍ حفظ بيانات الموظف...')
-
-
     if (!employeeName.trim()) {
       toast.error('اكتب اسم الموظف')
       return
@@ -49,45 +46,34 @@ export default function EmployeesPage(): ReactElement {
     try {
       setIsSavingEmployee(true)
 
-    if (editingEmployeeId) {
-      await window.api.employees.update({
-        id: editingEmployeeId,
-        name: employeeName,
-        national_id: cleanNationalId,
-        qualification,
-        job_title: jobTitle,
-        department_id: employeeDepartmentId ? Number(employeeDepartmentId) : null,
-        notes: employeeNotes,
-        active: employeeActive
-      })
+      if (editingEmployeeId) {
+        await window.api.employees.update({
+          id: editingEmployeeId,
+          name: employeeName,
+          national_id: cleanNationalId,
+          qualification,
+          job_title: jobTitle,
+          department_id: employeeDepartmentId ? Number(employeeDepartmentId) : null,
+          notes: employeeNotes,
+          active: employeeActive
+        })
 
-      toast.success('تم تعديل بيانات الموظف بنجاح')
-    } else {
-      await window.api.employees.create({
-        name: employeeName,
-        national_id: cleanNationalId,
-        qualification,
-        job_title: jobTitle,
-        department_id: employeeDepartmentId ? Number(employeeDepartmentId) : null,
-        notes: employeeNotes,
-        active: employeeActive
-      })
+        toast.success('تم تعديل بيانات الموظف بنجاح')
+      } else {
+        await window.api.employees.create({
+          name: employeeName,
+          national_id: cleanNationalId,
+          qualification,
+          job_title: jobTitle,
+          department_id: employeeDepartmentId ? Number(employeeDepartmentId) : null,
+          notes: employeeNotes,
+          active: employeeActive
+        })
 
-      toast.success('تم حفظ الموظف بنجاح')
-    }
+        toast.success('تم حفظ الموظف بنجاح')
+      }
 
-    resetEmployeeForm()
-    await loadEmployees()
-
-      setEmployeeName('')
-      setNationalId('')
-      setQualification('')
-      setJobTitle('')
-      setEmployeeDepartmentId('')
-      setEmployeeNotes('')
-      setEmployeeActive(true)
-      toast.success('تم حفظ الموظف بنجاح')
-
+      resetEmployeeForm()
       await loadEmployees()
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء حفظ الموظف'
@@ -165,12 +151,18 @@ export default function EmployeesPage(): ReactElement {
   async function toggleEmployeeActive(employee: Employee): Promise<void> {
     const nextActive = !employee.active
 
-    await window.api.employees.setActive({
-      id: employee.id,
-      active: nextActive
-    })
+    try {
+      await window.api.employees.setActive({
+        id: employee.id,
+        active: nextActive
+      })
 
-    await loadEmployees()
+      toast.success(nextActive ? 'تم تفعيل الموظف' : 'تم تعطيل الموظف')
+      await loadEmployees()
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء تغيير حالة الموظف'
+      toast.error(errorMessage)
+    }
   }
 
 

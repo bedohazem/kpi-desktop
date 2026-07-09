@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactElement } from 'react'
 import type { Department, EvaluationEmployee } from '../../types/api'
 import { toast } from '../../utils/toast'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 
 type EvaluationRowState = EvaluationEmployee & {
   evaluationValueInput: string
@@ -19,6 +20,7 @@ export default function EvaluationsPage(): ReactElement {
 
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false)
 
   async function loadRows(): Promise<void> {
     toast.info('جاري تحميل التقييمات...')
@@ -86,18 +88,8 @@ export default function EvaluationsPage(): ReactElement {
   }
 
   async function copyPreviousMonth(): Promise<void> {
+    setCopyDialogOpen(false)
     toast.info('جاري نسخ تقييمات الشهر السابق...')
-
-    if (!departmentId) {
-      toast.warning('اختار الإدارة أولًا')
-      return
-    }
-
-    const confirmed = window.confirm('هل تريد نسخ تقييمات الشهر السابق؟ القيم الموجودة حاليًا لن يتم استبدالها.')
-
-    if (!confirmed) {
-      return
-    }
 
     try {
       const result = await window.api.evaluations.copyPreviousMonth({
@@ -151,6 +143,15 @@ export default function EvaluationsPage(): ReactElement {
     }
   }, [])
 
+  function requestCopyPreviousMonth(): void {
+    if (!departmentId) {
+      toast.warning('اختار الإدارة أولًا')
+      return
+    }
+
+    setCopyDialogOpen(true)
+  }
+
   return (
     <>
       <section className="card">
@@ -191,7 +192,7 @@ export default function EvaluationsPage(): ReactElement {
             {isLoading ? 'جاري التحميل...' : 'تحميل الموظفين'}
           </button>
 
-          <button className="secondary-button" onClick={copyPreviousMonth}>
+          <button className="secondary-button" onClick={requestCopyPreviousMonth}>
             نسخ من الشهر السابق
           </button>
 
@@ -253,6 +254,18 @@ export default function EvaluationsPage(): ReactElement {
           </table>
         </div>
       </section>
+
+      <ConfirmDialog
+        open={copyDialogOpen}
+        title="نسخ تقييمات الشهر السابق"
+        message="هل تريد نسخ تقييمات الشهر السابق؟ القيم الموجودة حاليًا لن يتم استبدالها."
+        confirmText="نسخ"
+        cancelText="إلغاء"
+        onConfirm={() => {
+          void copyPreviousMonth()
+        }}
+        onCancel={() => setCopyDialogOpen(false)}
+      />
     </>
   )
 }

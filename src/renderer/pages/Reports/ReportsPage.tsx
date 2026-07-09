@@ -335,7 +335,7 @@ function buildReportPdfHtml(): string {
           </thead>
 
           <tbody>
-            ${employeeRows || '<tr><td class="no-data" colspan="20">لا توجد بيانات</td></tr>'}
+            ${employeeRows || `<tr><td class="no-data" colspan="${report.months.length + 7}">لا توجد بيانات</td></tr>`}
           </tbody>
         </table>
       </body>
