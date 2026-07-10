@@ -1,23 +1,24 @@
 import Database from 'better-sqlite3'
 import { app } from 'electron'
-import path from 'path'
-import fs from 'fs'
+import fs from 'node:fs'
+import path from 'node:path'
 
 let db: Database.Database | null = null
 
-export function initDb(): string {
+export function getDbPath(): string {
   const dataDir = path.join(app.getPath('userData'), 'data')
 
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true })
   }
 
-  const dbPath = path.join(dataDir, 'kpi.sqlite')
+  return path.join(dataDir, 'kpi.sqlite')
+}
 
-  db = new Database(dbPath)
-  db.pragma('foreign_keys = ON')
+function migrateDb(database: Database.Database): void {
+  database.pragma('foreign_keys = ON')
 
-  db.exec(`
+  database.exec(`
     CREATE TABLE IF NOT EXISTS departments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
@@ -58,12 +59,45 @@ export function initDb(): string {
     );
   `)
 
-  console.log('SQLite database ready:', dbPath)
+  const duplicateNationalId = database
+    .prepare(
+      `
+      SELECT national_id
+      FROM employees
+      WHERE national_id IS NOT NULL
+        AND TRIM(national_id) <> ''
+      GROUP BY national_id
+      HAVING COUNT(*) > 1
+      LIMIT 1
+    `
+    )
+    .get() as { national_id: string } | undefined
+
+  if (!duplicateNationalId) {
+    database.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_national_id_unique
+      ON employees(national_id)
+      WHERE national_id IS NOT NULL AND TRIM(national_id) <> '';
+    `)
+  }
+}
+
+export function initDb(): string {
+  const dbPath = getDbPath()
+
+  if (!db) {
+    db = new Database(dbPath)
+    migrateDb(db)
+  }
 
   return dbPath
 }
 
 export function getDb(): Database.Database {
+  if (!db) {
+    initDb()
+  }
+
   if (!db) {
     throw new Error('Database is not initialized')
   }
