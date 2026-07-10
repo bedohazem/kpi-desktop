@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState, type ReactElement } from 'react'
 import type { Department, Employee, ReportsResult } from '../../types/api'
 import * as XLSX from 'xlsx'
 import { toast } from '../../utils/toast'
+import {
+  flattenDepartmentTree,
+  getDepartmentAndDescendantIds
+} from '../../utils/departments-tree'
 
 const currentYear = new Date().getFullYear()
 
@@ -18,13 +22,26 @@ export default function ReportsPage(): ReactElement {
   const [report, setReport] = useState<ReportsResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  const filteredEmployees = useMemo(() => {
+  const departmentOptions = useMemo(() => flattenDepartmentTree(departments), [departments])
+
+  const selectedReportDepartmentIds = useMemo(() => {
     if (!departmentId) {
+      return null
+    }
+
+    return new Set(getDepartmentAndDescendantIds(departments, Number(departmentId)))
+  }, [departments, departmentId])
+
+  const filteredEmployees = useMemo(() => {
+    if (!selectedReportDepartmentIds) {
       return employees
     }
 
-    return employees.filter((employee) => String(employee.department_id || '') === departmentId)
-  }, [employees, departmentId])
+    return employees.filter(
+      (employee) =>
+        employee.department_id !== null && selectedReportDepartmentIds.has(employee.department_id)
+    )
+  }, [employees, selectedReportDepartmentIds])
 
   async function generateReport(): Promise<void> {
     toast.info('جاري انشاء تقرير ...')
@@ -410,8 +427,9 @@ async function exportReportToPdf(): Promise<void> {
               }}
             >
               <option value="">كل الإدارات</option>
-              {departments.map((department) => (
+              {departmentOptions.map((department) => (
                 <option key={department.id} value={department.id}>
+                  {'— '.repeat(department.level)}
                   {department.name}
                 </option>
               ))}

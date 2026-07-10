@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState, type ReactElement } from 'react'
 import type { Department, Employee } from '../../types/api'
 import { toast } from '../../utils/toast'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import {
+  flattenDepartmentTree,
+  getDepartmentAndDescendantIds
+} from '../../utils/departments-tree'
 
 export default function EmployeesPage(): ReactElement {
   const [departments, setDepartments] = useState<Department[]>([])
@@ -21,6 +25,16 @@ export default function EmployeesPage(): ReactElement {
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null)
   const [editingEmployeeId, setEditingEmployeeId] = useState<number | null>(null)
   const [showInactiveEmployees, setShowInactiveEmployees] = useState(false)
+
+  const departmentOptions = useMemo(() => flattenDepartmentTree(departments), [departments])
+
+  const selectedEmployeeDepartmentIds = useMemo(() => {
+    if (!employeeDepartmentFilter) {
+      return null
+    }
+
+    return new Set(getDepartmentAndDescendantIds(departments, Number(employeeDepartmentFilter)))
+  }, [departments, employeeDepartmentFilter])
 
   async function loadEmployees(): Promise<void> {
     const rows = await window.api.employees.list({
@@ -93,11 +107,12 @@ export default function EmployeesPage(): ReactElement {
         (employee.national_id || '').toLowerCase().includes(searchText)
 
       const matchesDepartment =
-        !employeeDepartmentFilter || String(employee.department_id || '') === employeeDepartmentFilter
+        !selectedEmployeeDepartmentIds ||
+        (employee.department_id !== null && selectedEmployeeDepartmentIds.has(employee.department_id))
 
       return matchesSearch && matchesDepartment
     })
-  }, [employees, employeeSearch, employeeDepartmentFilter])
+  }, [employees, employeeSearch, selectedEmployeeDepartmentIds])
 
   useEffect(() => {
     let isMounted = true
@@ -232,8 +247,9 @@ export default function EmployeesPage(): ReactElement {
               onChange={(event) => setEmployeeDepartmentId(event.target.value)}
             >
               <option value="">بدون إدارة</option>
-              {departments.map((department) => (
+              {departmentOptions.map((department) => (
                 <option key={department.id} value={department.id}>
+                  {'— '.repeat(department.level)}
                   {department.name}
                 </option>
               ))}

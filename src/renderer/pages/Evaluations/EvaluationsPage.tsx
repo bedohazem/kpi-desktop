@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactEle
 import type { Department, EvaluationEmployee } from '../../types/api'
 import { toast } from '../../utils/toast'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import { flattenDepartmentTree } from '../../utils/departments-tree'
 
 type EvaluationRowState = EvaluationEmployee & {
   evaluationValueInput: string
@@ -26,6 +27,7 @@ export default function EvaluationsPage(): ReactElement {
   const evaluationInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
   const [copyDialogOpen, setCopyDialogOpen] = useState(false)
 
+  const departmentOptions = useMemo(() => flattenDepartmentTree(departments), [departments])
 
   const evaluationSummary = useMemo(() => {
     const values = rows
@@ -234,8 +236,9 @@ export default function EvaluationsPage(): ReactElement {
             الإدارة
             <select value={departmentId} onChange={(event) => setDepartmentId(event.target.value)}>
               <option value="">كل الإدارات</option>
-              {departments.map((department) => (
+              {departmentOptions.map((department) => (
                 <option key={department.id} value={department.id}>
+                  {'— '.repeat(department.level)}
                   {department.name}
                 </option>
               ))}

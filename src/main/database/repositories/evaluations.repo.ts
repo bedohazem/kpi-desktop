@@ -42,7 +42,23 @@ export function listEvaluationEmployees(filters: EvaluationFilters): EvaluationE
        AND me.month = @month
        AND me.year = @year
       WHERE e.active = 1
-        AND (@department_id IS NULL OR e.department_id = @department_id)
+        AND (
+          @department_id IS NULL
+          OR e.department_id IN (
+            WITH RECURSIVE selected_departments(id) AS (
+              SELECT id
+              FROM departments
+              WHERE id = @department_id
+
+              UNION
+
+              SELECT d.id
+              FROM departments d
+              INNER JOIN selected_departments selected ON selected.id = d.parent_id
+            )
+            SELECT id FROM selected_departments
+          )
+        )
       ORDER BY e.name
     `
     )
@@ -138,7 +154,23 @@ export function copyPreviousMonthEvaluations(input: CopyPreviousMonthInput): Cop
       WHERE previous.month = @previousMonth
         AND previous.year = @previousYear
         AND e.active = 1
-        AND (@department_id IS NULL OR e.department_id = @department_id)
+        AND (
+          @department_id IS NULL
+          OR e.department_id IN (
+            WITH RECURSIVE selected_departments(id) AS (
+              SELECT id
+              FROM departments
+              WHERE id = @department_id
+
+              UNION
+
+              SELECT d.id
+              FROM departments d
+              INNER JOIN selected_departments selected ON selected.id = d.parent_id
+            )
+            SELECT id FROM selected_departments
+          )
+        )
       ON CONFLICT(employee_id, month, year) DO NOTHING
     `
     )

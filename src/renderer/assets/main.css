@@ -610,3 +610,16 @@ th {
   background: #fffbeb;
   border-color: #fde68a;
 }
+
+.department-tree-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+}
+
+.department-tree-branch {
+  color: #2563eb;
+  font-weight: 900;
+  min-width: 18px;
+}

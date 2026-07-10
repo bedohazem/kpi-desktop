@@ -1,7 +1,12 @@
-import { useEffect, useState, type ReactElement } from 'react'
+import { useEffect, useMemo, useState, type ReactElement } from 'react'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import type { Department } from '../../types/api'
 import { toast } from '../../utils/toast'
+import {
+  flattenDepartmentTree,
+  getDepartmentAndDescendantIds
+} from '../../utils/departments-tree'
+
 
 export default function DepartmentsPage(): ReactElement {
   const [departments, setDepartments] = useState<Department[]>([])
@@ -15,6 +20,20 @@ export default function DepartmentsPage(): ReactElement {
   const [editingDepartmentId, setEditingDepartmentId] = useState<number | null>(null)
   const [showInactiveDepartments, setShowInactiveDepartments] = useState(false)
   const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null)
+
+  const departmentTreeRows = useMemo(() => flattenDepartmentTree(departments), [departments])
+
+  const blockedParentIds = useMemo(() => {
+    if (!editingDepartmentId) {
+      return new Set<number>()
+    }
+
+    return new Set(getDepartmentAndDescendantIds(departments, editingDepartmentId))
+  }, [departments, editingDepartmentId])
+
+  const parentDepartmentOptions = useMemo(() => {
+    return departmentTreeRows.filter((department) => !blockedParentIds.has(department.id))
+  }, [departmentTreeRows, blockedParentIds])
 
   async function loadDepartments(): Promise<void> {
     const rows = await window.api.departments.list({
@@ -163,10 +182,9 @@ export default function DepartmentsPage(): ReactElement {
             تابعة لـ
             <select value={parentId} onChange={(event) => setParentId(event.target.value)}>
               <option value="">بدون إدارة رئيسية</option>
-              {departments
-                .filter((department) => department.id !== editingDepartmentId)
-                .map((department) => (
+                {parentDepartmentOptions.map((department) => (
                   <option key={department.id} value={department.id}>
+                    {'— '.repeat(department.level)}
                     {department.name}
                   </option>
                 ))}
@@ -240,9 +258,17 @@ export default function DepartmentsPage(): ReactElement {
                 <td colSpan={5}>لا توجد إدارات حتى الآن</td>
               </tr>
             ) : (
-              departments.map((department) => (
+              departmentTreeRows.map((department) => (
                 <tr key={department.id}>
-                  <td>{department.name}</td>
+                  <td>
+                    <span
+                      className="department-tree-name"
+                      style={{ paddingInlineStart: `${department.level * 22}px` }}
+                    >
+                      <span className="department-tree-branch">{department.level === 0 ? '●' : '↳'}</span>
+                      {department.name}
+                    </span>
+                  </td>
                   <td>{department.parent_name || '-'}</td>
                   <td>{department.notes || '-'}</td>
                   <td>{department.active ? 'نشطة' : 'غير نشطة'}</td>

@@ -1,10 +1,11 @@
 {
   "name": "kpi-desktop",
+  "productName": "KPI Desktop",
   "version": "1.0.0",
-  "description": "An Electron application with React and TypeScript",
+  "description": "Desktop monthly employee KPI evaluation management system",
   "main": "electron-main.cjs",
-  "author": "example.com",
-  "homepage": "https://electron-vite.org",
+  "author": "KPI Desktop Team",
+  "homepage": "./",
   "scripts": {
     "dev:renderer": "vite",
     "dev:electron": "wait-on tcp:3000 && cross-env NODE_ENV=development electron .",
@@ -56,5 +57,40 @@
     "typescript": "^5.9.3",
     "vite": "^7.2.6",
     "wait-on": "^9.0.10"
+  },
+  "build": {
+    "appId": "com.kpidesktop.app",
+    "productName": "KPI Desktop",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron-main.cjs",
+      "preload.cjs",
+      "dist/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "KPI-Desktop-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "KPI Desktop",
+      "deleteAppDataOnUninstall": false
+    }
   }
 }

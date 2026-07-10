@@ -8,6 +8,63 @@ import type {
   SetDepartmentActiveInput,
   UpdateDepartmentInput
 } from '../../types/departments'
+import type Database from 'better-sqlite3'
+
+
+function validateParentDepartment(
+  db: Database.Database,
+  departmentId: number | null,
+  parentId: number | null
+): void {
+  if (parentId === null) {
+    return
+  }
+
+  const parent = db.prepare(`SELECT id FROM departments WHERE id = ? LIMIT 1`).get(parentId) as
+    | { id: number }
+    | undefined
+
+  if (!parent) {
+    throw new Error('الإدارة الرئيسية غير موجودة')
+  }
+
+  if (departmentId && parentId === departmentId) {
+    throw new Error('الإدارة لا يمكن أن تكون تابعة لنفسها')
+  }
+
+  if (!departmentId) {
+    return
+  }
+
+  const invalidParent = db
+    .prepare(
+      `
+      WITH RECURSIVE children(id) AS (
+        SELECT id
+        FROM departments
+        WHERE parent_id = @departmentId
+
+        UNION
+
+        SELECT d.id
+        FROM departments d
+        INNER JOIN children c ON c.id = d.parent_id
+      )
+      SELECT id
+      FROM children
+      WHERE id = @parentId
+      LIMIT 1
+    `
+    )
+    .get({
+      departmentId,
+      parentId
+    }) as { id: number } | undefined
+
+  if (invalidParent) {
+    throw new Error('لا يمكن اختيار إدارة تابعة كإدارة رئيسية')
+  }
+}
 
 export function listDepartments(input: ListDepartmentsInput = {}): DepartmentRow[] {
   const db = getDb()
@@ -43,6 +100,7 @@ export function createDepartment(input: CreateDepartmentInput): MutationResult {
   }
 
   const db = getDb()
+  validateParentDepartment(db, null, input.parent_id)
 
   try {
     db.prepare(
@@ -80,6 +138,7 @@ export function updateDepartment(input: UpdateDepartmentInput): MutationResult {
   }
 
   const db = getDb()
+  validateParentDepartment(db, id, input.parent_id)
 
   const existingName = db
     .prepare(
@@ -95,10 +154,6 @@ export function updateDepartment(input: UpdateDepartmentInput): MutationResult {
 
   if (existingName) {
     throw new Error('اسم الإدارة موجود قبل كده')
-  }
-
-  if (input.parent_id === id) {
-    throw new Error('الإدارة لا يمكن أن تكون تابعة لنفسها')
   }
 
   const result = db

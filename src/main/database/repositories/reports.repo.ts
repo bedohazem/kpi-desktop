@@ -69,7 +69,23 @@ export function generateReports(filters: ReportFilters): ReportsResult {
       FROM employees e
       LEFT JOIN departments d ON d.id = e.department_id
       WHERE e.active = 1
-        AND (@department_id IS NULL OR e.department_id = @department_id)
+        AND (
+          @department_id IS NULL
+          OR e.department_id IN (
+            WITH RECURSIVE selected_departments(id) AS (
+              SELECT id
+              FROM departments
+              WHERE id = @department_id
+
+              UNION
+
+              SELECT d.id
+              FROM departments d
+              INNER JOIN selected_departments selected ON selected.id = d.parent_id
+            )
+            SELECT id FROM selected_departments
+          )
+        )
         AND (@employee_id IS NULL OR e.id = @employee_id)
       ORDER BY e.id ASC
     `
@@ -92,7 +108,23 @@ export function generateReports(filters: ReportFilters): ReportsResult {
       WHERE me.year = @year
         AND me.month BETWEEN @from_month AND @to_month
         AND e.active = 1
-        AND (@department_id IS NULL OR e.department_id = @department_id)
+        AND (
+          @department_id IS NULL
+          OR e.department_id IN (
+            WITH RECURSIVE selected_departments(id) AS (
+              SELECT id
+              FROM departments
+              WHERE id = @department_id
+
+              UNION
+
+              SELECT d.id
+              FROM departments d
+              INNER JOIN selected_departments selected ON selected.id = d.parent_id
+            )
+            SELECT id FROM selected_departments
+          )
+        )
         AND (@employee_id IS NULL OR e.id = @employee_id)
       ORDER BY me.employee_id, me.month
     `
@@ -160,7 +192,23 @@ export function generateReports(filters: ReportFilters): ReportsResult {
        AND me.year = @year
        AND me.month BETWEEN @from_month AND @to_month
       WHERE e.active = 1
-        AND (@department_id IS NULL OR e.department_id = @department_id)
+        AND (
+          @department_id IS NULL
+          OR e.department_id IN (
+            WITH RECURSIVE selected_departments(id) AS (
+              SELECT id
+              FROM departments
+              WHERE id = @department_id
+
+              UNION
+
+              SELECT d.id
+              FROM departments d
+              INNER JOIN selected_departments selected ON selected.id = d.parent_id
+            )
+            SELECT id FROM selected_departments
+          )
+        )
         AND (@employee_id IS NULL OR e.id = @employee_id)
       GROUP BY e.department_id, d.name
       ORDER BY d.name
