@@ -22,7 +22,8 @@
     "electron:prepare": "electron-rebuild -f -w better-sqlite3",
     "dev:ready": "npm run electron:prepare && npm run dev",
     "build:unpack": "npm run build && electron-builder --dir",
-    "build:win": "npm run build && electron-builder --win"
+    "build:win": "npm run build && electron-builder --win",
+    "dist:win": "npm run typecheck && npm run build:renderer && npm run build:main && npm run electron:prepare && electron-builder --win nsis --x64"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
