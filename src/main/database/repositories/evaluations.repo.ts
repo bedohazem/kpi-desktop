@@ -29,6 +29,7 @@ export function listEvaluationEmployees(filters: EvaluationFilters): EvaluationE
       SELECT
         e.id AS employee_id,
         e.name AS employee_name,
+        e.qualification,
         e.job_title,
         e.department_id,
         d.name AS department_name,

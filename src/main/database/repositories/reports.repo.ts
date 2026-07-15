@@ -63,6 +63,7 @@ export function generateReports(filters: ReportFilters): ReportsResult {
       SELECT
         e.id AS employee_id,
         e.name AS employee_name,
+        e.qualification,
         e.job_title,
         e.department_id,
         COALESCE(d.name, 'بدون إدارة') AS department_name

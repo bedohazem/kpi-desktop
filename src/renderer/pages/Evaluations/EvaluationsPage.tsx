@@ -331,8 +331,9 @@ export default function EvaluationsPage(): ReactElement {
               <tr>       
                 <th>م</th>         
                 <th>الاسم</th>
-                <th>الوظيفة</th>
+                <th>المؤهل</th>
                 <th>الإدارة</th>
+                <th>الوظيفة</th>
                 <th>التقييم</th>
                 <th>ملاحظات</th>
               </tr>
@@ -341,7 +342,7 @@ export default function EvaluationsPage(): ReactElement {
             <tbody>
               {visibleEvaluationRows.length === 0 ? (
                 <tr>
-                  <td colSpan={6}>
+                  <td colSpan={7}>
                     {rows.length === 0 ? 'اختار الشهر ثم اضغط تحميل الموظفين' : 'لا توجد نتائج مطابقة للبحث'}
                   </td>
                 </tr>
@@ -350,8 +351,9 @@ export default function EvaluationsPage(): ReactElement {
                   <tr key={row.employee_id}>
                     <td>{index + 1}</td>
                     <td>{row.employee_name}</td>
-                    <td>{row.job_title || '-'}</td>
+                    <td>{row.qualification || '-'}</td>
                     <td>{row.department_name || '-'}</td>
+                    <td>{row.job_title || '-'}</td>
                     <td>
                       <input
                         ref={(element) => {
