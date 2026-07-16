@@ -330,7 +330,7 @@ export default function EvaluationsPage(): ReactElement {
             <thead>
               <tr>       
                 <th>م</th>         
-                <th>الاسم</th>
+                <th>اسم الموظف</th>
                 <th>المؤهل</th>
                 <th>الإدارة</th>
                 <th>الوظيفة</th>

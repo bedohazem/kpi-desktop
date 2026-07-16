@@ -9,6 +9,7 @@ export type ReportFilters = {
 export type EmployeeReportRow = {
   employee_id: number
   employee_name: string
+  qualification: string | null
   job_title: string | null
   department_id: number | null
   department_name: string | null

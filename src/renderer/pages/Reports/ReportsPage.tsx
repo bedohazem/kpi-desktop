@@ -97,9 +97,10 @@ export default function ReportsPage(): ReactElement {
   const employeeRows = report.employees.map((employee, index) => {
     const row: Record<string, string | number> = {
       م: index + 1,
-      الاسم: employee.employee_name,
-      الوظيفة: employee.job_title || '',
-      الإدارة: employee.department_name || ''
+      'اسم الموظف': employee.employee_name,
+      المؤهل: employee.qualification || '',
+      الإدارة: employee.department_name || '',
+      الوظيفة: employee.job_title || ''
     }
 
     for (const reportMonth of report.months) {
@@ -174,8 +175,9 @@ function buildReportPdfHtml(): string {
         <tr>
           <td>${index + 1}</td>
           <td class="text-cell">${escapeHtml(employee.employee_name)}</td>
-          <td class="text-cell">${escapeHtml(employee.job_title || '-')}</td>
+          <td class="text-cell">${escapeHtml(employee.qualification || '-')}</td>
           <td class="text-cell">${escapeHtml(employee.department_name || '-')}</td>
+          <td class="text-cell">${escapeHtml(employee.job_title || '-')}</td>
           ${monthCells}
           <td>${formatNumber(employee.total)}</td>
           <td>${formatNumber(employee.average)}</td>
@@ -329,7 +331,8 @@ function buildReportPdfHtml(): string {
         <table>
           <colgroup>
             <col style="width: 3%" />
-            <col style="width: 12%" />
+            <col style="width: 11%" />
+            <col style="width: 9%" />
             <col style="width: 9%" />
             <col style="width: 9%" />
             ${monthColumns}
@@ -341,9 +344,10 @@ function buildReportPdfHtml(): string {
           <thead>
             <tr>
               <th>م</th>
-              <th>الاسم</th>
-              <th>الوظيفة</th>
+              <th>اسم الموظف</th>
+              <th>المؤهل</th>
               <th>الإدارة</th>
+              <th>الوظيفة</th>
               ${monthHeaders}
               <th>الإجمالي</th>
               <th>المتوسط</th>
@@ -352,7 +356,7 @@ function buildReportPdfHtml(): string {
           </thead>
 
           <tbody>
-            ${employeeRows || `<tr><td class="no-data" colspan="${report.months.length + 7}">لا توجد بيانات</td></tr>`}
+            ${employeeRows || `<tr><td class="no-data" colspan="${report.months.length + 8}">لا توجد بيانات</td></tr>`}
           </tbody>
         </table>
       </body>
@@ -497,9 +501,10 @@ async function exportReportToPdf(): Promise<void> {
                 <thead>
                   <tr>
                     <th>م</th>
-                    <th>الاسم</th>
-                    <th>الوظيفة</th>
+                    <th>اسم الموظف</th>
+                    <th>المؤهل</th>
                     <th>الإدارة</th>
+                    <th>الوظيفة</th>
                     {report.months.map((month) => (
                       <th key={month}>شهر {month}</th>
                     ))}
@@ -512,15 +517,16 @@ async function exportReportToPdf(): Promise<void> {
                 <tbody>
                   {report.employees.length === 0 ? (
                     <tr>
-                      <td colSpan={report.months.length + 7}>لا توجد بيانات في هذا التقرير</td>
+                      <td colSpan={report.months.length + 8}>لا توجد بيانات في هذا التقرير</td>
                     </tr>
                   ) : (
                     report.employees.map((employee, index) => (
                       <tr key={employee.employee_id}>
                         <td>{index + 1}</td>
                         <td>{employee.employee_name}</td>
-                        <td>{employee.job_title || '-'}</td>
+                        <td>{employee.qualification || '-'}</td>
                         <td>{employee.department_name || '-'}</td>
+                        <td>{employee.job_title || '-'}</td>
 
                         {report.months.map((month) => (
                           <td key={month}>
