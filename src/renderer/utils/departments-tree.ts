@@ -97,3 +97,67 @@ export function getDepartmentAndDescendantIds(
 
   return ids
 }
+
+export function sortEmployeesByDepartmentTree<
+  T extends {
+    employee_id: number
+    employee_name: string
+    department_id: number | null
+  }
+>(employees: T[], departments: Department[]): T[] {
+  const departmentOrder = new Map<number, number>()
+
+  flattenDepartmentTree(departments).forEach((department, index) => {
+    departmentOrder.set(department.id, index)
+  })
+
+  return [...employees].sort((first, second) => {
+    const firstDepartmentOrder =
+      first.department_id === null
+        ? Number.MAX_SAFE_INTEGER
+        : (departmentOrder.get(first.department_id) ?? Number.MAX_SAFE_INTEGER)
+
+    const secondDepartmentOrder =
+      second.department_id === null
+        ? Number.MAX_SAFE_INTEGER
+        : (departmentOrder.get(second.department_id) ?? Number.MAX_SAFE_INTEGER)
+
+    if (firstDepartmentOrder !== secondDepartmentOrder) {
+      return firstDepartmentOrder - secondDepartmentOrder
+    }
+
+    const nameComparison = first.employee_name.localeCompare(second.employee_name, 'ar')
+
+    if (nameComparison !== 0) {
+      return nameComparison
+    }
+
+    return first.employee_id - second.employee_id
+  })
+}
+
+export function sortDepartmentSummaryByTree<
+  T extends {
+    department_id: number | null
+  }
+>(items: T[], departments: Department[]): T[] {
+  const departmentOrder = new Map<number, number>()
+
+  flattenDepartmentTree(departments).forEach((department, index) => {
+    departmentOrder.set(department.id, index)
+  })
+
+  return [...items].sort((first, second) => {
+    const firstOrder =
+      first.department_id === null
+        ? Number.MAX_SAFE_INTEGER
+        : (departmentOrder.get(first.department_id) ?? Number.MAX_SAFE_INTEGER)
+
+    const secondOrder =
+      second.department_id === null
+        ? Number.MAX_SAFE_INTEGER
+        : (departmentOrder.get(second.department_id) ?? Number.MAX_SAFE_INTEGER)
+
+    return firstOrder - secondOrder
+  })
+}

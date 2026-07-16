@@ -4,7 +4,9 @@ import * as XLSX from 'xlsx'
 import { toast } from '../../utils/toast'
 import {
   flattenDepartmentTree,
-  getDepartmentAndDescendantIds
+  getDepartmentAndDescendantIds,
+  sortDepartmentSummaryByTree,
+  sortEmployeesByDepartmentTree
 } from '../../utils/departments-tree'
 
 const currentYear = new Date().getFullYear()
@@ -42,6 +44,63 @@ export default function ReportsPage(): ReactElement {
         employee.department_id !== null && selectedReportDepartmentIds.has(employee.department_id)
     )
   }, [employees, selectedReportDepartmentIds])
+
+  const orderedReportEmployees = useMemo(() => {
+    if (!report) {
+      return []
+    }
+
+    return sortEmployeesByDepartmentTree(report.employees, departments)
+  }, [report, departments])
+
+  const reportTotals = useMemo(() => {
+    const monthTotals: Record<string, number> = {}
+
+    if (!report) {
+      return {
+        monthTotals,
+        grandTotal: 0,
+        overallAverage: 0
+      }
+    }
+
+    for (const reportMonth of report.months) {
+      monthTotals[String(reportMonth)] = orderedReportEmployees.reduce(
+        (sum, employee) => {
+          const value = employee.month_values[String(reportMonth)]
+          return sum + (typeof value === 'number' ? value : 0)
+        },
+        0
+      )
+    }
+
+    const grandTotal = Object.values(monthTotals).reduce(
+      (sum, value) => sum + value,
+      0
+    )
+
+    const overallAverage = orderedReportEmployees.reduce(
+      (sum, employee) => sum + employee.average,
+      0
+    )
+
+    return {
+      monthTotals,
+      grandTotal,
+      overallAverage
+    }
+  }, [report, orderedReportEmployees])
+
+  const orderedDepartmentSummary = useMemo(() => {
+    if (!report) {
+      return []
+    }
+
+    return sortDepartmentSummaryByTree(
+      report.departmentSummary,
+      departments
+    )
+  }, [report, departments])
 
   async function generateReport(): Promise<void> {
     toast.info('جاري انشاء تقرير ...')
@@ -94,7 +153,7 @@ export default function ReportsPage(): ReactElement {
     return
   }
 
-  const employeeRows = report.employees.map((employee, index) => {
+  const employeeRows = orderedReportEmployees.map((employee, index) => {
     const row: Record<string, string | number> = {
       م: index + 1,
       'اسم الموظف': employee.employee_name,
@@ -115,7 +174,34 @@ export default function ReportsPage(): ReactElement {
     return row
   })
 
-  const departmentRows = report.departmentSummary.map((department) => ({
+  if (employeeRows.length > 0) {
+    const totalExcelRow: Record<string, string | number> = {
+      م: '',
+      'اسم الموظف': 'الإجمالي',
+      المؤهل: '',
+      الإدارة: '',
+      الوظيفة: ''
+    }
+
+    for (const reportMonth of report.months) {
+      totalExcelRow[`شهر ${reportMonth}`] = Number(
+        reportTotals.monthTotals[String(reportMonth)].toFixed(2)
+      )
+    }
+
+    totalExcelRow['الإجمالي'] = Number(
+      reportTotals.grandTotal.toFixed(2)
+    )
+
+    totalExcelRow['المتوسط'] = Number(
+      reportTotals.overallAverage.toFixed(2)
+    )
+    totalExcelRow['ملاحظات'] = ''
+
+    employeeRows.push(totalExcelRow)
+  }
+
+  const departmentRows = orderedDepartmentSummary.map((department) => ({
     الإدارة: department.department_name,
     'عدد الموظفين': department.employees_count,
     'عدد التقييمات': department.evaluations_count,
@@ -162,7 +248,7 @@ function buildReportPdfHtml(): string {
 
   const monthColumns = report.months.map(() => '<col style="width: 4.2%" />').join('')
 
-  const employeeRows = report.employees
+  const employeeRows = orderedReportEmployees
     .map((employee, index) => {
       const monthCells = report.months
         .map((monthNumber) => {
@@ -187,7 +273,30 @@ function buildReportPdfHtml(): string {
     })
     .join('')
 
-  const summaryRows = report.departmentSummary
+
+  const totalRow =
+    orderedReportEmployees.length > 0
+      ? `
+        <tr class="total-row">
+          <td colspan="5">الإجمالي</td>
+
+          ${report.months
+            .map(
+              (reportMonth) =>
+                `<td>${formatNumber(
+                  reportTotals.monthTotals[String(reportMonth)]
+                )}</td>`
+            )
+            .join('')}
+
+          <td>${formatNumber(reportTotals.grandTotal)}</td>
+          <td>${formatNumber(reportTotals.overallAverage)}</td>
+          <td>-</td>
+        </tr>
+      `
+      : ''
+
+  const summaryRows = orderedDepartmentSummary
     .map(
       (department) => `
         <tr>
@@ -356,7 +465,11 @@ function buildReportPdfHtml(): string {
           </thead>
 
           <tbody>
-            ${employeeRows || `<tr><td class="no-data" colspan="${report.months.length + 8}">لا توجد بيانات</td></tr>`}
+            ${
+              employeeRows
+                ? `${employeeRows}${totalRow}`
+                : `<tr><td class="no-data" colspan="${report.months.length + 8}">لا توجد بيانات</td></tr>`
+            }
           </tbody>
         </table>
       </body>
@@ -474,11 +587,11 @@ async function exportReportToPdf(): Promise<void> {
           <section className="card">
             <div className="section-header">
               <h2>ملخص الإدارات</h2>
-              <span>عدد الإدارات: {report.departmentSummary.length}</span>
+              <span>عدد الإدارات: {orderedDepartmentSummary.length}</span>
             </div>
 
             <div className="report-summary-grid">
-              {report.departmentSummary.map((department) => (
+              {orderedDepartmentSummary.map((department) => (
                 <div className="summary-card" key={String(department.department_id)}>
                   <h3>{department.department_name}</h3>
                   <p>عدد الموظفين: {department.employees_count}</p>
@@ -493,7 +606,7 @@ async function exportReportToPdf(): Promise<void> {
           <section className="card">
             <div className="section-header">
               <h2>تقرير الموظفين</h2>
-              <span>عدد الموظفين: {report.employees.length}</span>
+              <span>عدد الموظفين: {orderedReportEmployees.length}</span>
             </div>
 
             <div className="table-wrapper">
@@ -520,7 +633,7 @@ async function exportReportToPdf(): Promise<void> {
                       <td colSpan={report.months.length + 8}>لا توجد بيانات في هذا التقرير</td>
                     </tr>
                   ) : (
-                    report.employees.map((employee, index) => (
+                    orderedReportEmployees.map((employee, index) => (
                       <tr key={employee.employee_id}>
                         <td>{index + 1}</td>
                         <td>{employee.employee_name}</td>
@@ -543,6 +656,23 @@ async function exportReportToPdf(): Promise<void> {
                     ))
                   )}
                 </tbody>
+              {orderedReportEmployees.length > 0 && (
+                <tfoot>
+                  <tr className="report-total-row">
+                    <td colSpan={5}>الإجمالي</td>
+
+                    {report.months.map((reportMonth) => (
+                      <td key={reportMonth}>
+                        {reportTotals.monthTotals[String(reportMonth)].toFixed(2)}
+                      </td>
+                    ))}
+
+                    <td>{reportTotals.grandTotal.toFixed(2)}</td>
+                    <td>{reportTotals.overallAverage.toFixed(2)}</td>
+                    <td>-</td>
+                  </tr>
+                </tfoot>
+              )}
               </table>
             </div>
           </section>

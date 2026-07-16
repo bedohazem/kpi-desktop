@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactEle
 import type { Department, EvaluationEmployee } from '../../types/api'
 import { toast } from '../../utils/toast'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
-import { flattenDepartmentTree } from '../../utils/departments-tree'
+import {
+  flattenDepartmentTree,
+  sortEmployeesByDepartmentTree
+} from '../../utils/departments-tree'
 
 type EvaluationRowState = EvaluationEmployee & {
   evaluationValueInput: string
@@ -26,8 +29,15 @@ export default function EvaluationsPage(): ReactElement {
   const [activeEvaluationEmployeeId, setActiveEvaluationEmployeeId] = useState<number | null>(null)
   const evaluationInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
   const [copyDialogOpen, setCopyDialogOpen] = useState(false)
+  const [isExportingPdf, setIsExportingPdf] = useState(false)
 
   const departmentOptions = useMemo(() => flattenDepartmentTree(departments), [departments])
+
+
+  const orderedEvaluationRows = useMemo(
+  () => sortEmployeesByDepartmentTree(rows, departments),
+  [rows, departments]
+)
 
   const evaluationSummary = useMemo(() => {
     const values = rows
@@ -51,7 +61,7 @@ export default function EvaluationsPage(): ReactElement {
   const visibleEvaluationRows = useMemo(() => {
     const searchText = evaluationSearch.trim().toLowerCase()
 
-    return rows.filter((row) => {
+    return orderedEvaluationRows.filter((row) => {
       const matchesSearch =
         !searchText ||
         row.employee_name.toLowerCase().includes(searchText) ||
@@ -65,7 +75,7 @@ export default function EvaluationsPage(): ReactElement {
 
       return matchesSearch && matchesMissing
     })
-  }, [rows, evaluationSearch, showMissingOnly, activeEvaluationEmployeeId])
+  }, [orderedEvaluationRows, evaluationSearch, showMissingOnly, activeEvaluationEmployeeId])
 
   async function loadRows(): Promise<void> {
     toast.info('جاري تحميل التقييمات...')
@@ -210,6 +220,216 @@ export default function EvaluationsPage(): ReactElement {
     focusNextEvaluationInput(currentIndex)
   }
 
+
+  function escapeEvaluationPdfHtml(
+  value: string | number | null | undefined
+): string {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
+}
+
+function buildMonthlyEvaluationsPdfHtml(): string {
+  const selectedDepartment = departmentId
+    ? departmentOptions.find(
+        (department) => department.id === Number(departmentId)
+      )
+    : null
+
+  const tableRows = visibleEvaluationRows
+    .map(
+      (row, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td class="text-cell">${escapeEvaluationPdfHtml(row.employee_name)}</td>
+          <td class="text-cell">${escapeEvaluationPdfHtml(row.qualification || '-')}</td>
+          <td class="text-cell">${escapeEvaluationPdfHtml(row.department_name || '-')}</td>
+          <td class="text-cell">${escapeEvaluationPdfHtml(row.job_title || '-')}</td>
+          <td>${escapeEvaluationPdfHtml(row.evaluationValueInput)}</td>
+          <td class="text-cell">${escapeEvaluationPdfHtml(row.notesInput || '-')}</td>
+        </tr>
+      `
+    )
+    .join('')
+
+  return `
+    <!doctype html>
+    <html lang="ar" dir="rtl">
+      <head>
+        <meta charset="UTF-8" />
+
+        <style>
+          @page {
+            size: A4 landscape;
+            margin: 10mm;
+          }
+
+          * {
+            box-sizing: border-box;
+          }
+
+          body {
+            margin: 0;
+            background: white;
+            color: #111;
+            direction: rtl;
+            font-family: Tahoma, Arial, sans-serif;
+          }
+
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            border-bottom: 2px solid #111;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+          }
+
+          h1 {
+            margin: 0 0 6px;
+            font-size: 20px;
+          }
+
+          .subtitle {
+            font-size: 11px;
+            line-height: 1.8;
+          }
+
+          .meta {
+            direction: rtl;
+            text-align: left;
+            font-size: 10px;
+            line-height: 1.8;
+          }
+
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+          }
+
+          th,
+          td {
+            border: 1px solid #333;
+            padding: 6px 4px;
+            font-size: 10px;
+            line-height: 1.4;
+            text-align: center;
+            vertical-align: middle;
+            overflow-wrap: anywhere;
+          }
+
+          th {
+            background: #e5e7eb;
+            font-weight: 700;
+          }
+
+          .text-cell {
+            text-align: right;
+          }
+
+          .no-data {
+            text-align: center;
+            padding: 24px;
+            font-size: 13px;
+          }
+        </style>
+      </head>
+
+      <body>
+        <div class="header">
+          <div>
+            <h1>قائمة تقييمات الشهر</h1>
+
+            <div class="subtitle">
+              الإدارة:
+              ${escapeEvaluationPdfHtml(selectedDepartment?.path || 'كل الإدارات')}
+              <br />
+              عدد الموظفين: ${visibleEvaluationRows.length}
+            </div>
+          </div>
+
+          <div class="meta">
+            الشهر: ${escapeEvaluationPdfHtml(month)}
+            <br />
+            السنة: ${escapeEvaluationPdfHtml(year)}
+            <br />
+            تاريخ الطباعة:
+            ${escapeEvaluationPdfHtml(new Date().toLocaleDateString('ar-EG'))}
+          </div>
+        </div>
+
+        <table>
+          <colgroup>
+            <col style="width: 5%" />
+            <col style="width: 18%" />
+            <col style="width: 15%" />
+            <col style="width: 17%" />
+            <col style="width: 15%" />
+            <col style="width: 10%" />
+            <col style="width: 20%" />
+          </colgroup>
+
+          <thead>
+            <tr>
+              <th>م</th>
+              <th>اسم الموظف</th>
+              <th>المؤهل</th>
+              <th>الإدارة</th>
+              <th>الوظيفة</th>
+              <th>التقييم</th>
+              <th>الملاحظات</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            ${
+              tableRows ||
+              '<tr><td class="no-data" colspan="7">لا توجد بيانات</td></tr>'
+            }
+          </tbody>
+        </table>
+      </body>
+    </html>
+  `
+}
+
+async function exportMonthlyEvaluationsToPdf(): Promise<void> {
+  if (visibleEvaluationRows.length === 0) {
+    toast.warning('لا توجد تقييمات ظاهرة لتصديرها')
+    return
+  }
+
+  try {
+    setIsExportingPdf(true)
+
+    const result = await window.api.reports.savePdf({
+      html: buildMonthlyEvaluationsPdfHtml(),
+      fileName: `Monthly_Evaluations_${year}_${month}.pdf`
+    })
+
+    if (result.canceled) {
+      toast.info('تم إلغاء حفظ PDF')
+      return
+    }
+
+    toast.success('تم حفظ قائمة تقييمات الشهر PDF')
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'حدث خطأ أثناء حفظ قائمة التقييمات'
+
+    toast.error(errorMessage)
+  } finally {
+    setIsExportingPdf(false)
+  }
+}
+
   return (
     <>
       <section className="card">
@@ -257,6 +477,14 @@ export default function EvaluationsPage(): ReactElement {
 
           <button className="primary-button" disabled={isSaving || rows.length === 0} onClick={saveEvaluations}>
             {isSaving ? 'جاري الحفظ...' : 'حفظ التقييمات'}
+          </button>
+
+          <button
+            className="secondary-button"
+            disabled={isExportingPdf || visibleEvaluationRows.length === 0}
+            onClick={exportMonthlyEvaluationsToPdf}
+          >
+            {isExportingPdf ? 'جاري إنشاء PDF...' : 'قائمة تقييمات الشهر PDF'}
           </button>
         </div>
 

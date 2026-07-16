@@ -623,3 +623,15 @@ th {
   font-weight: 900;
   min-width: 18px;
 }
+
+.total-row td {
+  background: #e5e7eb;
+  font-weight: 700;
+  border-top: 2px solid #111;
+}
+
+.report-total-row td {
+  background: #e5e7eb;
+  font-weight: 900;
+  border-top: 2px solid #111827;
+}
