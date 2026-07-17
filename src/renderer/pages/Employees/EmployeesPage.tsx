@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactElement
-} from 'react'
+import { useEffect, useMemo, useState, type ReactElement } from 'react'
 import type { Department, Employee } from '../../types/api'
 import { toast } from '../../utils/toast'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
@@ -33,9 +27,6 @@ export default function EmployeesPage(): ReactElement {
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null)
   const [editingEmployeeId, setEditingEmployeeId] = useState<number | null>(null)
   const [showInactiveEmployees, setShowInactiveEmployees] = useState(false)
-
-  const employeeFormRef = useRef<HTMLElement | null>(null)
-  const employeeNameInputRef = useRef<HTMLInputElement | null>(null)
 
   const departmentOptions = useMemo(() => flattenDepartmentTree(departments), [departments])
 
@@ -196,19 +187,7 @@ export default function EmployeesPage(): ReactElement {
         ? String(employee.sort_order)
         : ''
     )
-   toast.info('تعديل بيانات الموظف')
-
-    requestAnimationFrame(() => {
-      employeeFormRef.current?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
-      })
-
-      window.setTimeout(() => {
-        employeeNameInputRef.current?.focus()
-        employeeNameInputRef.current?.select()
-      }, 350)
-    })
+    toast.info('تعديل بيانات الموظف')
   }
 
   async function toggleEmployeeActive(employee: Employee): Promise<void> {
@@ -255,18 +234,14 @@ export default function EmployeesPage(): ReactElement {
 
   return (
     <>
-      <section ref={employeeFormRef} className="card">
-        <h2>{editingEmployeeId ? 'تعديل بيانات الموظف' : 'إضافة موظف'}</h2>
+      <section className="card">
+        <h2>إضافة موظف</h2>
 
         <div className="form-grid">
 
           <label>
             اسم الموظف
-            <input
-              ref={employeeNameInputRef}
-              value={employeeName}
-              onChange={(event) => setEmployeeName(event.target.value)}
-            />
+            <input value={employeeName} onChange={(event) => setEmployeeName(event.target.value)} />
           </label>
 
           <label>
