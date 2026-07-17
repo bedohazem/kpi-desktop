@@ -103,6 +103,7 @@ export function sortEmployeesByDepartmentTree<
     employee_id: number
     employee_name: string
     department_id: number | null
+    sort_order: number
   }
 >(employees: T[], departments: Department[]): T[] {
   const departmentOrder = new Map<number, number>()
@@ -124,6 +125,22 @@ export function sortEmployeesByDepartmentTree<
 
     if (firstDepartmentOrder !== secondDepartmentOrder) {
       return firstDepartmentOrder - secondDepartmentOrder
+    }
+
+
+    const firstHasOrder = first.sort_order > 0
+    const secondHasOrder = second.sort_order > 0
+
+    if (firstHasOrder !== secondHasOrder) {
+      return firstHasOrder ? -1 : 1
+    }
+
+    if (
+      firstHasOrder &&
+      secondHasOrder &&
+      first.sort_order !== second.sort_order
+    ) {
+      return first.sort_order - second.sort_order
     }
 
     const nameComparison = first.employee_name.localeCompare(second.employee_name, 'ar')
@@ -159,5 +176,61 @@ export function sortDepartmentSummaryByTree<
         : (departmentOrder.get(second.department_id) ?? Number.MAX_SAFE_INTEGER)
 
     return firstOrder - secondOrder
+  })
+}
+
+export function sortEmployeeListByDepartmentTree<
+  T extends {
+    id: number
+    name: string
+    department_id: number | null
+    sort_order: number
+  }
+>(employees: T[], departments: Department[]): T[] {
+  const departmentOrder = new Map<number, number>()
+
+  flattenDepartmentTree(departments).forEach((department, index) => {
+    departmentOrder.set(department.id, index)
+  })
+
+  return [...employees].sort((first, second) => {
+    const firstDepartmentOrder =
+      first.department_id === null
+        ? Number.MAX_SAFE_INTEGER
+        : (departmentOrder.get(first.department_id) ??
+          Number.MAX_SAFE_INTEGER)
+
+    const secondDepartmentOrder =
+      second.department_id === null
+        ? Number.MAX_SAFE_INTEGER
+        : (departmentOrder.get(second.department_id) ??
+          Number.MAX_SAFE_INTEGER)
+
+    if (firstDepartmentOrder !== secondDepartmentOrder) {
+      return firstDepartmentOrder - secondDepartmentOrder
+    }
+
+    const firstHasOrder = first.sort_order > 0
+    const secondHasOrder = second.sort_order > 0
+
+    if (firstHasOrder !== secondHasOrder) {
+      return firstHasOrder ? -1 : 1
+    }
+
+    if (
+      firstHasOrder &&
+      secondHasOrder &&
+      first.sort_order !== second.sort_order
+    ) {
+      return first.sort_order - second.sort_order
+    }
+
+    const nameComparison = first.name.localeCompare(second.name, 'ar')
+
+    if (nameComparison !== 0) {
+      return nameComparison
+    }
+
+    return first.id - second.id
   })
 }

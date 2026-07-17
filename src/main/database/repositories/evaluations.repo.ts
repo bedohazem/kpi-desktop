@@ -32,6 +32,7 @@ export function listEvaluationEmployees(filters: EvaluationFilters): EvaluationE
         e.qualification,
         e.job_title,
         e.department_id,
+        e.sort_order,
         d.name AS department_name,
         me.id AS evaluation_id,
         me.evaluation_value,
@@ -60,7 +61,11 @@ export function listEvaluationEmployees(filters: EvaluationFilters): EvaluationE
             SELECT id FROM selected_departments
           )
         )
-      ORDER BY e.name
+      ORDER BY
+        CASE WHEN e.sort_order > 0 THEN 0 ELSE 1 END,
+        e.sort_order ASC,
+        e.name COLLATE NOCASE ASC,
+        e.id ASC
     `
     )
     .all({

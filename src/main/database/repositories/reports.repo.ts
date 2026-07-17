@@ -12,6 +12,7 @@ type EmployeeBaseRow = {
   qualification: string | null
   job_title: string | null
   department_id: number | null
+  sort_order: number
   department_name: string | null
 }
 
@@ -67,6 +68,7 @@ export function generateReports(filters: ReportFilters): ReportsResult {
         e.qualification,
         e.job_title,
         e.department_id,
+        e.sort_order,
         COALESCE(d.name, 'بدون إدارة') AS department_name
       FROM employees e
       LEFT JOIN departments d ON d.id = e.department_id

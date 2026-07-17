@@ -35,6 +35,7 @@ export type Employee = {
   qualification: string | null
   job_title: string | null
   department_id: number | null
+  sort_order: number
   department_name: string | null
   notes: string | null
   active: number
@@ -72,6 +73,7 @@ export type CreateEmployeeInput = {
   qualification: string
   job_title: string
   department_id: number | null
+  sort_order: number
   notes: string
   active: boolean
 }
@@ -86,6 +88,7 @@ export type EvaluationEmployee = {
   qualification: string | null
   job_title: string | null
   department_id: number | null
+  sort_order: number
   department_name: string | null
   evaluation_id: number | null
   evaluation_value: number | null
@@ -135,6 +138,7 @@ export type EmployeeReportRow = {
   qualification: string | null
   job_title: string | null
   department_id: number | null
+  sort_order: number
   department_name: string | null
   month_values: Record<string, number | null>
   total: number

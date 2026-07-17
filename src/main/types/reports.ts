@@ -12,6 +12,7 @@ export type EmployeeReportRow = {
   qualification: string | null
   job_title: string | null
   department_id: number | null
+  sort_order: number
   department_name: string | null
   month_values: Record<string, number | null>
   total: number

@@ -3,6 +3,7 @@ export type EvaluationEmployeeRow = {
   employee_name: string
   job_title: string | null
   department_id: number | null
+  sort_order: number
   department_name: string | null
   evaluation_id: number | null
   evaluation_value: number | null

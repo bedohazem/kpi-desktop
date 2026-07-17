@@ -22,6 +22,7 @@ export function listEmployees(input: ListEmployeesInput = {}): EmployeeRow[] {
         e.qualification,
         e.job_title,
         e.department_id,
+        e.sort_order,
         d.name AS department_name,
         e.notes,
         e.active,
@@ -30,7 +31,11 @@ export function listEmployees(input: ListEmployeesInput = {}): EmployeeRow[] {
       FROM employees e
       LEFT JOIN departments d ON d.id = e.department_id
       WHERE (@includeInactive = 1 OR e.active = 1)
-      ORDER BY e.id ASC
+      ORDER BY
+        CASE WHEN e.sort_order > 0 THEN 0 ELSE 1 END,
+        e.sort_order ASC,
+        e.name COLLATE NOCASE ASC,
+        e.id ASC
     `
     )
     .all({
@@ -41,6 +46,12 @@ export function listEmployees(input: ListEmployeesInput = {}): EmployeeRow[] {
 export function createEmployee(input: CreateEmployeeInput): MutationResult {
   const name = input.name.trim()
   const nationalId = input.national_id.trim()
+
+  const sortOrder = Number(input.sort_order)
+
+  if (!Number.isInteger(sortOrder) || sortOrder < 0) {
+    throw new Error('الترتيب داخل الإدارة غير صحيح')
+  }
 
   if (!name) {
     throw new Error('اسم الموظف مطلوب')
@@ -76,6 +87,7 @@ export function createEmployee(input: CreateEmployeeInput): MutationResult {
         qualification,
         job_title,
         department_id,
+        sort_order,
         notes,
         active
       )
@@ -85,6 +97,7 @@ export function createEmployee(input: CreateEmployeeInput): MutationResult {
         @qualification,
         @job_title,
         @department_id,
+        @sort_order,
         @notes,
         @active
       )
@@ -95,6 +108,7 @@ export function createEmployee(input: CreateEmployeeInput): MutationResult {
       qualification: input.qualification.trim(),
       job_title: input.job_title.trim(),
       department_id: input.department_id,
+      sort_order: sortOrder,
       notes: input.notes.trim(),
       active: input.active ? 1 : 0
     })
@@ -113,6 +127,12 @@ export function updateEmployee(input: UpdateEmployeeInput): MutationResult {
   const id = Number(input.id)
   const name = input.name.trim()
   const nationalId = input.national_id.trim()
+
+  const sortOrder = Number(input.sort_order)
+
+  if (!Number.isInteger(sortOrder) || sortOrder < 0) {
+    throw new Error('الترتيب داخل الإدارة غير صحيح')
+  }
 
   if (!id) {
     throw new Error('الموظف غير صحيح')
@@ -154,6 +174,7 @@ export function updateEmployee(input: UpdateEmployeeInput): MutationResult {
         qualification = @qualification,
         job_title = @job_title,
         department_id = @department_id,
+        sort_order = @sort_order,
         notes = @notes,
         active = @active,
         updated_at = CURRENT_TIMESTAMP
@@ -167,6 +188,7 @@ export function updateEmployee(input: UpdateEmployeeInput): MutationResult {
       qualification: input.qualification.trim(),
       job_title: input.job_title.trim(),
       department_id: input.department_id,
+      sort_order: sortOrder,
       notes: input.notes.trim(),
       active: input.active ? 1 : 0
     })

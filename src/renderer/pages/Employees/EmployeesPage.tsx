@@ -4,7 +4,8 @@ import { toast } from '../../utils/toast'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import {
   flattenDepartmentTree,
-  getDepartmentAndDescendantIds
+  getDepartmentAndDescendantIds,
+  sortEmployeeListByDepartmentTree
 } from '../../utils/departments-tree'
 
 export default function EmployeesPage(): ReactElement {
@@ -15,6 +16,7 @@ export default function EmployeesPage(): ReactElement {
   const [nationalId, setNationalId] = useState('')
   const [qualification, setQualification] = useState('')
   const [jobTitle, setJobTitle] = useState('')
+  const [employeeSortOrder, setEmployeeSortOrder] = useState('')
   const [employeeDepartmentId, setEmployeeDepartmentId] = useState('')
   const [employeeNotes, setEmployeeNotes] = useState('')
   const [employeeActive, setEmployeeActive] = useState(true)
@@ -68,6 +70,9 @@ export default function EmployeesPage(): ReactElement {
           qualification,
           job_title: jobTitle,
           department_id: employeeDepartmentId ? Number(employeeDepartmentId) : null,
+          sort_order: employeeSortOrder
+            ? Number(employeeSortOrder)
+            : 0,
           notes: employeeNotes,
           active: employeeActive
         })
@@ -80,6 +85,9 @@ export default function EmployeesPage(): ReactElement {
           qualification,
           job_title: jobTitle,
           department_id: employeeDepartmentId ? Number(employeeDepartmentId) : null,
+          sort_order: employeeSortOrder
+            ? Number(employeeSortOrder)
+            : 0,
           notes: employeeNotes,
           active: employeeActive
         })
@@ -100,19 +108,32 @@ export default function EmployeesPage(): ReactElement {
   const filteredEmployees = useMemo(() => {
     const searchText = employeeSearch.trim().toLowerCase()
 
-    return employees.filter((employee) => {
+    const matchingEmployees = employees.filter((employee) => {
       const matchesSearch =
         !searchText ||
         employee.name.toLowerCase().includes(searchText) ||
-        (employee.national_id || '').toLowerCase().includes(searchText)
+        (employee.national_id || '')
+          .toLowerCase()
+          .includes(searchText)
 
       const matchesDepartment =
         !selectedEmployeeDepartmentIds ||
-        (employee.department_id !== null && selectedEmployeeDepartmentIds.has(employee.department_id))
+        (employee.department_id !== null &&
+          selectedEmployeeDepartmentIds.has(employee.department_id))
 
       return matchesSearch && matchesDepartment
     })
-  }, [employees, employeeSearch, selectedEmployeeDepartmentIds])
+
+    return sortEmployeeListByDepartmentTree(
+      matchingEmployees,
+      departments
+    )
+  }, [
+    employees,
+    departments,
+    employeeSearch,
+    selectedEmployeeDepartmentIds
+  ])
 
   useEffect(() => {
     let isMounted = true
@@ -149,6 +170,7 @@ export default function EmployeesPage(): ReactElement {
     setEmployeeDepartmentId('')
     setEmployeeNotes('')
     setEmployeeActive(true)
+    setEmployeeSortOrder('')
   }
 
   function startEditEmployee(employee: Employee): void {
@@ -160,6 +182,11 @@ export default function EmployeesPage(): ReactElement {
     setEmployeeDepartmentId(employee.department_id ? String(employee.department_id) : '')
     setEmployeeNotes(employee.notes || '')
     setEmployeeActive(Boolean(employee.active))
+    setEmployeeSortOrder(
+      employee.sort_order > 0
+        ? String(employee.sort_order)
+        : ''
+    )
     toast.info('تعديل بيانات الموظف')
   }
 
@@ -238,6 +265,19 @@ export default function EmployeesPage(): ReactElement {
           <label>
             الوظيفة
             <input value={jobTitle} onChange={(event) => setJobTitle(event.target.value)} />
+          </label>
+
+          <label>
+            الترتيب داخل الإدارة
+            <input
+              value={employeeSortOrder}
+              inputMode="numeric"
+              placeholder="1 للمدير، 2 للنائب..."
+              onChange={(event) => {
+                const value = event.target.value.replace(/\D/g, '')
+                setEmployeeSortOrder(value)
+              }}
+            />
           </label>
 
           <label>
@@ -328,6 +368,7 @@ export default function EmployeesPage(): ReactElement {
               <th>المؤهل</th>
               <th>الوظيفة</th>
               <th>الإدارة</th>
+              <th>الترتيب</th>
               <th>الحالة</th>
               <th>ملاحظات</th>
               <th>إجراءات</th>
@@ -337,7 +378,7 @@ export default function EmployeesPage(): ReactElement {
           <tbody>
             {filteredEmployees.length === 0 ? (
               <tr>
-                <td colSpan={8}>لا توجد موظفين مطابقين للبحث</td>
+                <td colSpan={9}>لا توجد موظفين مطابقين للبحث</td>
               </tr>
             ) : (
               filteredEmployees.map((employee) => (
@@ -347,6 +388,11 @@ export default function EmployeesPage(): ReactElement {
                   <td>{employee.qualification || '-'}</td>
                   <td>{employee.job_title || '-'}</td>
                   <td>{employee.department_name || '-'}</td>
+                  <td>
+                    {employee.sort_order > 0
+                      ? employee.sort_order
+                      : '-'}
+                  </td>
                   <td>{employee.active ? 'نشط' : 'غير نشط'}</td>
                   <td>{employee.notes || '-'}</td>
                   <td>

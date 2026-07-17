@@ -38,6 +38,7 @@ function migrateDb(database: Database.Database): void {
       qualification TEXT,
       job_title TEXT,
       department_id INTEGER,
+      sort_order INTEGER NOT NULL DEFAULT 0,
       notes TEXT DEFAULT '',
       active INTEGER DEFAULT 1,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -58,6 +59,21 @@ function migrateDb(database: Database.Database): void {
       UNIQUE(employee_id, month, year)
     );
   `)
+
+  const employeeColumns = database
+    .prepare(`PRAGMA table_info(employees)`)
+    .all() as Array<{ name: string }>
+
+  const hasSortOrder = employeeColumns.some(
+    (column) => column.name === 'sort_order'
+  )
+
+  if (!hasSortOrder) {
+    database.exec(`
+      ALTER TABLE employees
+      ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
+    `)
+  }
 
   const duplicateNationalId = database
     .prepare(
