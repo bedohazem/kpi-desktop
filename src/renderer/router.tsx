@@ -5,6 +5,7 @@ import DepartmentsPage from './pages/Departments/DepartmentsPage'
 import EmployeesPage from './pages/Employees/EmployeesPage'
 import EvaluationsPage from './pages/Evaluations/EvaluationsPage'
 import ReportsPage from './pages/Reports/ReportsPage'
+import BackupPage from './pages/Backup/BackupPage'
 
 export const router = createHashRouter([
   {
@@ -30,6 +31,10 @@ export const router = createHashRouter([
       {
         path: 'reports',
         element: <ReportsPage />
+      },
+      {
+        path: 'backup',
+        element: <BackupPage />
       }
     ]
   }

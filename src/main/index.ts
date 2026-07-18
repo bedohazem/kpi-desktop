@@ -6,6 +6,11 @@ import { registerEmployeesIpc } from './ipc/employees.ipc'
 import { registerEvaluationsIpc } from './ipc/evaluations.ipc'
 import { registerReportsIpc } from './ipc/reports.ipc'
 import { registerDashboardIpc } from './ipc/dashboard.ipc'
+import { registerBackupIpc } from './ipc/backup.ipc'
+import {
+  applyPendingRestore,
+  runAutomaticBackup
+} from './services/backup.service'
 
 type DbTestResult = {
   ok: boolean
@@ -62,6 +67,21 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  try {
+    const restoreApplied = applyPendingRestore()
+
+    if (restoreApplied) {
+      console.log(
+        'Pending database restore applied successfully'
+      )
+    }
+  } catch (error) {
+    console.error(
+      'Failed to apply pending database restore:',
+      error
+    )
+  }
+
   const dbPath = initDb()
 
 
@@ -83,6 +103,15 @@ app.whenReady().then(() => {
   registerEvaluationsIpc()
   registerReportsIpc()
   registerDashboardIpc()
+  registerBackupIpc()
+
+  void runAutomaticBackup().catch((error) => {
+    console.error(
+      'Automatic backup failed:',
+      error
+    )
+  })
+
   createWindow()
 
   app.on('activate', () => {

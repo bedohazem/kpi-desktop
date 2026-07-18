@@ -32,6 +32,37 @@ contextBridge.exposeInMainWorld('api', {
   reports: {
     generate: (filters) => ipcRenderer.invoke('reports:generate', filters),
     savePdf: (input) => ipcRenderer.invoke('reports:save-pdf', input)
+  },
+
+  backup: {
+    getStatus: () =>
+      ipcRenderer.invoke('backup:get-status'),
+
+    chooseDirectory: () =>
+      ipcRenderer.invoke('backup:choose-directory'),
+
+    createNow: () =>
+      ipcRenderer.invoke('backup:create-now'),
+
+    setEnabled: (enabled) =>
+      ipcRenderer.invoke(
+        'backup:set-enabled',
+        enabled
+      ),
+
+    openDirectory: () =>
+      ipcRenderer.invoke('backup:open-directory'),
+  
+    chooseRestoreFile: () =>
+      ipcRenderer.invoke(
+        'backup:choose-restore-file'
+      ),
+
+    restartAfterRestore: () =>
+      ipcRenderer.invoke(
+        'backup:restart-after-restore'
+      )
+
   }
 
 })

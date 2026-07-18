@@ -1,7 +1,7 @@
 {
   "name": "kpi-desktop",
   "productName": "KPI Desktop",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Desktop monthly employee KPI evaluation management system",
   "main": "electron-main.cjs",
   "author": "KPI Desktop Team",

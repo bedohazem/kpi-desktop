@@ -44,6 +44,14 @@ export default function AppShell(): ReactElement {
           >
             التقارير
           </NavLink>
+          <NavLink
+            className={({ isActive }) =>
+              isActive ? 'tab active' : 'tab'
+            }
+            to="/backup"
+          >
+            النسخ الاحتياطي
+          </NavLink>
         </nav>
 
         <Outlet />

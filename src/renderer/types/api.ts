@@ -189,6 +189,38 @@ export type DeleteEmployeeInput = {
   id: number
 }
 
+export type BackupStatus = {
+  directory: string
+  enabled: boolean
+  lastBackupAt: string | null
+  lastBackupPath: string | null
+  lastError: string | null
+  configured: boolean
+}
+
+export type ChooseBackupDirectoryResult = {
+  canceled: boolean
+  status: BackupStatus
+}
+
+export type OpenBackupDirectoryResult = {
+  success: boolean
+}
+
+export type PrepareRestoreResult = {
+  success: boolean
+  fileName: string
+}
+
+export type ChooseRestoreFileResult = {
+  canceled: boolean
+  result: PrepareRestoreResult | null
+}
+
+export type RestartAfterRestoreResult = {
+  success: boolean
+}
+
 export type AppApi = {
   dbTest: () => Promise<DbTestResult>
   dashboard: {
@@ -216,6 +248,27 @@ export type AppApi = {
   reports: {
     generate: (filters: ReportFilters) => Promise<ReportsResult>
     savePdf: (input: SaveReportPdfInput) => Promise<SaveReportPdfResult>
+  }
+  backup: {
+    getStatus: () => Promise<BackupStatus>
+
+    chooseDirectory: () =>
+      Promise<ChooseBackupDirectoryResult>
+
+    createNow: () => Promise<BackupStatus>
+
+    setEnabled: (
+      enabled: boolean
+    ) => Promise<BackupStatus>
+
+    openDirectory: () =>
+      Promise<OpenBackupDirectoryResult>
+
+    chooseRestoreFile: () =>
+      Promise<ChooseRestoreFileResult>
+
+    restartAfterRestore: () =>
+      Promise<RestartAfterRestoreResult>
   }
 }
 
