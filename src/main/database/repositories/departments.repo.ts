@@ -76,6 +76,7 @@ export function listDepartments(input: ListDepartmentsInput = {}): DepartmentRow
         d.id,
         d.name,
         d.parent_id,
+        d.sort_order,
         p.name AS parent_name,
         d.notes,
         d.active,
@@ -84,7 +85,11 @@ export function listDepartments(input: ListDepartmentsInput = {}): DepartmentRow
       FROM departments d
       LEFT JOIN departments p ON p.id = d.parent_id
       WHERE (@includeInactive = 1 OR d.active = 1)
-      ORDER BY d.id ASC
+      ORDER BY
+        CASE WHEN d.sort_order > 0 THEN 0 ELSE 1 END,
+        d.sort_order ASC,
+        d.name COLLATE NOCASE ASC,
+        d.id ASC
     `
     )
     .all({
@@ -94,6 +99,17 @@ export function listDepartments(input: ListDepartmentsInput = {}): DepartmentRow
 
 export function createDepartment(input: CreateDepartmentInput): MutationResult {
   const name = input.name.trim()
+
+  const sortOrder = Number(input.sort_order)
+
+  if (
+    !Number.isInteger(sortOrder) ||
+    sortOrder < 0
+  ) {
+    throw new Error(
+      'ترتيب الإدارة غير صحيح'
+    )
+  }
 
   if (!name) {
     throw new Error('اسم الإدارة مطلوب')
@@ -105,12 +121,25 @@ export function createDepartment(input: CreateDepartmentInput): MutationResult {
   try {
     db.prepare(
       `
-      INSERT INTO departments (name, parent_id, notes, active)
-      VALUES (@name, @parent_id, @notes, @active)
+      INSERT INTO departments (
+        name,
+        parent_id,
+        sort_order,
+        notes,
+        active
+      )
+      VALUES (
+        @name,
+        @parent_id,
+        @sort_order,
+        @notes,
+        @active
+      )
     `
     ).run({
       name,
       parent_id: input.parent_id,
+      sort_order: sortOrder,
       notes: input.notes.trim(),
       active: input.active ? 1 : 0
     })
@@ -128,6 +157,17 @@ export function createDepartment(input: CreateDepartmentInput): MutationResult {
 export function updateDepartment(input: UpdateDepartmentInput): MutationResult {
   const id = Number(input.id)
   const name = input.name.trim()
+
+  const sortOrder = Number(input.sort_order)
+
+  if (
+    !Number.isInteger(sortOrder) ||
+    sortOrder < 0
+  ) {
+    throw new Error(
+      'ترتيب الإدارة غير صحيح'
+    )
+  }
 
   if (!id) {
     throw new Error('الإدارة غير صحيحة')
@@ -163,6 +203,7 @@ export function updateDepartment(input: UpdateDepartmentInput): MutationResult {
       SET
         name = @name,
         parent_id = @parent_id,
+        sort_order = @sort_order,
         notes = @notes,
         active = @active,
         updated_at = CURRENT_TIMESTAMP
@@ -173,6 +214,7 @@ export function updateDepartment(input: UpdateDepartmentInput): MutationResult {
       id,
       name,
       parent_id: input.parent_id,
+      sort_order: sortOrder,
       notes: input.notes.trim(),
       active: input.active ? 1 : 0
     })

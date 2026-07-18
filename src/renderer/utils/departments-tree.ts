@@ -6,8 +6,47 @@ export type DepartmentTreeNode = Department & {
   children: DepartmentTreeNode[]
 }
 
-function sortDepartments<T extends { name: string; id: number }>(items: T[]): T[] {
-  return [...items].sort((a, b) => a.name.localeCompare(b.name, 'ar') || a.id - b.id)
+function sortDepartments<
+  T extends {
+    name: string
+    id: number
+    sort_order: number
+  }
+>(items: T[]): T[] {
+  return [...items].sort((first, second) => {
+    const firstHasOrder =
+      first.sort_order > 0
+
+    const secondHasOrder =
+      second.sort_order > 0
+
+    if (firstHasOrder !== secondHasOrder) {
+      return firstHasOrder ? -1 : 1
+    }
+
+    if (
+      firstHasOrder &&
+      secondHasOrder &&
+      first.sort_order !== second.sort_order
+    ) {
+      return (
+        first.sort_order -
+        second.sort_order
+      )
+    }
+
+    const nameComparison =
+      first.name.localeCompare(
+        second.name,
+        'ar'
+      )
+
+    if (nameComparison !== 0) {
+      return nameComparison
+    }
+
+    return first.id - second.id
+  })
 }
 
 export function buildDepartmentTree(departments: Department[]): DepartmentTreeNode[] {

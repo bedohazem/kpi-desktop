@@ -13,6 +13,7 @@ export default function DepartmentsPage(): ReactElement {
 
   const [departmentName, setDepartmentName] = useState('')
   const [parentId, setParentId] = useState('')
+  const [departmentSortOrder,setDepartmentSortOrder] = useState('')
   const [departmentNotes, setDepartmentNotes] = useState('')
   const [departmentActive, setDepartmentActive] = useState(true)
 
@@ -47,6 +48,7 @@ export default function DepartmentsPage(): ReactElement {
     setEditingDepartmentId(null)
     setDepartmentName('')
     setParentId('')
+    setDepartmentSortOrder('')
     setDepartmentNotes('')
     setDepartmentActive(true)
   }
@@ -55,6 +57,7 @@ export default function DepartmentsPage(): ReactElement {
     setEditingDepartmentId(department.id)
     setDepartmentName(department.name)
     setParentId(department.parent_id ? String(department.parent_id) : '')
+    setDepartmentSortOrder(department.sort_order > 0 ? String(department.sort_order) : '')
     setDepartmentNotes(department.notes || '')
     setDepartmentActive(Boolean(department.active))
     toast.info('تعديل بيانات الإدارة')
@@ -74,6 +77,7 @@ export default function DepartmentsPage(): ReactElement {
           id: editingDepartmentId,
           name: departmentName,
           parent_id: parentId ? Number(parentId) : null,
+          sort_order: departmentSortOrder ? Number(departmentSortOrder) : 0,
           notes: departmentNotes,
           active: departmentActive
         })
@@ -83,6 +87,7 @@ export default function DepartmentsPage(): ReactElement {
         await window.api.departments.create({
           name: departmentName,
           parent_id: parentId ? Number(parentId) : null,
+          sort_order: departmentSortOrder ? Number(departmentSortOrder) : 0,
           notes: departmentNotes,
           active: departmentActive
         })
@@ -192,6 +197,22 @@ export default function DepartmentsPage(): ReactElement {
           </label>
 
           <label>
+            الترتيب داخل نفس المستوى
+
+            <input
+              value={departmentSortOrder}
+              inputMode="numeric"
+              placeholder="1 للأولى، 2 للثانية..."
+              onChange={(event) => {
+                const value =
+                  event.target.value.replace(/\D/g, '')
+
+                setDepartmentSortOrder(value)
+              }}
+            />
+          </label>
+
+          <label>
             ملاحظات
             <input
               value={departmentNotes}
@@ -246,6 +267,7 @@ export default function DepartmentsPage(): ReactElement {
             <tr>
               <th>الإدارة</th>
               <th>تابعة لـ</th>
+              <th>الترتيب</th>
               <th>ملاحظات</th>
               <th>الحالة</th>
               <th>إجراءات</th>
@@ -255,7 +277,7 @@ export default function DepartmentsPage(): ReactElement {
           <tbody>
             {departments.length === 0 ? (
               <tr>
-                <td colSpan={5}>لا توجد إدارات حتى الآن</td>
+                <td colSpan={6}>لا توجد إدارات حتى الآن</td>
               </tr>
             ) : (
               departmentTreeRows.map((department) => (
@@ -270,6 +292,11 @@ export default function DepartmentsPage(): ReactElement {
                     </span>
                   </td>
                   <td>{department.parent_name || '-'}</td>
+                  <td>
+                    {department.sort_order > 0
+                      ? department.sort_order
+                      : '-'}
+                  </td>
                   <td>{department.notes || '-'}</td>
                   <td>{department.active ? 'نشطة' : 'غير نشطة'}</td>
                   <td>

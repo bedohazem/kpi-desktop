@@ -22,6 +22,7 @@ export type Department = {
   name: string
   parent_id: number | null
   parent_name: string | null
+  sort_order: number
   notes: string | null
   active: number
   created_at: string
@@ -46,6 +47,7 @@ export type Employee = {
 export type CreateDepartmentInput = {
   name: string
   parent_id: number | null
+  sort_order: number
   notes: string
   active: boolean
 }

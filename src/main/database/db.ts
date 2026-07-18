@@ -23,6 +23,7 @@ function migrateDb(database: Database.Database): void {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
       parent_id INTEGER,
+      sort_order INTEGER NOT NULL DEFAULT 0,
       notes TEXT DEFAULT '',
       active INTEGER DEFAULT 1,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -59,6 +60,21 @@ function migrateDb(database: Database.Database): void {
       UNIQUE(employee_id, month, year)
     );
   `)
+
+  const departmentColumns = database
+    .prepare(`PRAGMA table_info(departments)`)
+    .all() as Array<{ name: string }>
+
+  const hasDepartmentSortOrder = departmentColumns.some(
+    (column) => column.name === 'sort_order'
+  )
+
+  if (!hasDepartmentSortOrder) {
+    database.exec(`
+      ALTER TABLE departments
+      ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
+    `)
+  }
 
   const employeeColumns = database
     .prepare(`PRAGMA table_info(employees)`)
