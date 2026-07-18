@@ -635,3 +635,67 @@ th {
   font-weight: 900;
   border-top: 2px solid #111827;
 }
+
+
+/* الهيدر والتابات ثابتين أعلى الشاشة */
+.app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: #f3f4f6;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+}
+
+.app-topbar .app-header {
+  position: relative;
+  z-index: 2;
+}
+
+.app-topbar .tabs {
+  margin: 0;
+  padding: 12px 24px;
+  background: #f3f4f6;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+}
+
+/* كارت إضافة الإدارة وإضافة الموظف */
+.sticky-entry-card {
+  position: sticky;
+  top: 151px;
+  z-index: 900;
+  border: 1px solid #e5e7eb;
+}
+
+/* منع ظهور محتوى الجدول خلف الكارت بشكل مزعج */
+.sticky-entry-card::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  right: -1px;
+  left: -1px;
+  height: 20px;
+  background: #f3f4f6;
+}
+
+/* لا نستخدم التثبيت أثناء الطباعة */
+@media print {
+  .app-topbar,
+  .sticky-entry-card {
+    position: static !important;
+  }
+
+  .sticky-entry-card::before {
+    display: none !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-topbar .tabs {
+    padding: 10px 14px;
+  }
+
+  .sticky-entry-card {
+    top: 148px;
+  }
+}

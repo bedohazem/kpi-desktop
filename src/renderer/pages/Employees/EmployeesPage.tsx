@@ -255,7 +255,10 @@ export default function EmployeesPage(): ReactElement {
 
   return (
     <>
-      <section ref={employeeFormRef} className="card">
+      <section
+        ref={employeeFormRef}
+        className="card sticky-entry-card"
+      >
         <h2>{editingEmployeeId ? 'تعديل بيانات الموظف' : 'إضافة موظف'}</h2>
 
         <div className="form-grid">

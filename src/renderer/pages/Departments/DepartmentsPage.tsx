@@ -166,7 +166,7 @@ export default function DepartmentsPage(): ReactElement {
 
   return (
     <>
-      <section className="card">
+      <section className="card sticky-entry-card">
         <h2>{editingDepartmentId ? 'تعديل إدارة' : 'إضافة إدارة'}</h2>
 
         <div className="form-grid">
