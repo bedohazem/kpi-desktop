@@ -14,13 +14,13 @@ type EmployeeBaseRow = {
   department_id: number | null
   sort_order: number
   department_name: string | null
+  notes: string | null
 }
 
 type EvaluationValueRow = {
   employee_id: number
   month: number
   evaluation_value: number
-  notes: string | null
 }
 
 type DepartmentAggregateRow = {
@@ -69,7 +69,8 @@ export function generateReports(filters: ReportFilters): ReportsResult {
         e.job_title,
         e.department_id,
         e.sort_order,
-        COALESCE(d.name, 'بدون إدارة') AS department_name
+        COALESCE(d.name, 'بدون إدارة') AS department_name,
+        e.notes
       FROM employees e
       LEFT JOIN departments d ON d.id = e.department_id
       WHERE e.active = 1
@@ -105,8 +106,7 @@ export function generateReports(filters: ReportFilters): ReportsResult {
       SELECT
         me.employee_id,
         me.month,
-        me.evaluation_value,
-        me.notes
+        me.evaluation_value
       FROM monthly_evaluations me
       INNER JOIN employees e ON e.id = me.employee_id
       WHERE me.year = @year
@@ -165,17 +165,13 @@ export function generateReports(filters: ReportFilters): ReportsResult {
     const total = numericValues.reduce((sum, value) => sum + value, 0)
     const average = numericValues.length > 0 ? total / numericValues.length : 0
 
-    const notes = employeeEvaluations
-      .map((evaluation) => evaluation.notes?.trim())
-      .filter((note): note is string => Boolean(note))
-      .join(' | ')
 
     return {
       ...employee,
       month_values: monthValues,
       total,
       average,
-      notes
+      notes: employee.notes?.trim() || ''
     }
   })
 
