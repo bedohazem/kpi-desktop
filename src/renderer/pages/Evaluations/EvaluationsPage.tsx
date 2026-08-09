@@ -123,7 +123,7 @@ export default function EvaluationsPage(): ReactElement {
         items: rows.map((row) => ({
           employee_id: row.employee_id,
           evaluation_value: row.evaluationValueInput ? Number(row.evaluationValueInput) : 0,
-          notes: row.notesInput
+          notes: ''
         }))
       })
 
@@ -163,12 +163,6 @@ export default function EvaluationsPage(): ReactElement {
       currentRows.map((row) =>
         row.employee_id === employeeId ? { ...row, evaluationValueInput: cleanValue } : row
       )
-    )
-  }
-
-  function updateNotes(employeeId: number, value: string): void {
-    setRows((currentRows) =>
-      currentRows.map((row) => (row.employee_id === employeeId ? { ...row, notesInput: value } : row))
     )
   }
 
@@ -601,13 +595,7 @@ async function exportMonthlyEvaluationsToPdf(): Promise<void> {
                         onChange={(event) => updateEvaluationValue(row.employee_id, event.target.value)}
                       />
                     </td>
-                    <td>
-                      <input
-                        className="table-input"
-                        value={row.notesInput}
-                        onChange={(event) => updateNotes(row.employee_id, event.target.value)}
-                      />
-                    </td>
+                    <td>{row.notesInput || '-'}</td>
                   </tr>
                 ))
               )}

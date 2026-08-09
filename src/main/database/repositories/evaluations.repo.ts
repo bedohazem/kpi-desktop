@@ -36,7 +36,7 @@ export function listEvaluationEmployees(filters: EvaluationFilters): EvaluationE
         d.name AS department_name,
         me.id AS evaluation_id,
         me.evaluation_value,
-        me.notes AS evaluation_notes
+        e.notes AS evaluation_notes
       FROM employees e
       LEFT JOIN departments d ON d.id = e.department_id
       LEFT JOIN monthly_evaluations me
