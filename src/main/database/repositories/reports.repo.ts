@@ -73,7 +73,16 @@ export function generateReports(filters: ReportFilters): ReportsResult {
         e.notes
       FROM employees e
       LEFT JOIN departments d ON d.id = e.department_id
-      WHERE e.active = 1
+      WHERE (
+          e.active = 1
+          OR EXISTS (
+            SELECT 1
+            FROM monthly_evaluations historical
+            WHERE historical.employee_id = e.id
+              AND historical.year = @year
+              AND historical.month BETWEEN @from_month AND @to_month
+          )
+        )
         AND (
           @department_id IS NULL
           OR e.department_id IN (
@@ -96,6 +105,9 @@ export function generateReports(filters: ReportFilters): ReportsResult {
     `
     )
     .all({
+      year: filters.year,
+      from_month: filters.from_month,
+      to_month: filters.to_month,
       department_id: filters.department_id,
       employee_id: filters.employee_id
     }) as EmployeeBaseRow[]
@@ -111,7 +123,6 @@ export function generateReports(filters: ReportFilters): ReportsResult {
       INNER JOIN employees e ON e.id = me.employee_id
       WHERE me.year = @year
         AND me.month BETWEEN @from_month AND @to_month
-        AND e.active = 1
         AND (
           @department_id IS NULL
           OR e.department_id IN (
@@ -191,7 +202,16 @@ export function generateReports(filters: ReportFilters): ReportsResult {
         ON me.employee_id = e.id
        AND me.year = @year
        AND me.month BETWEEN @from_month AND @to_month
-      WHERE e.active = 1
+      WHERE (
+          e.active = 1
+          OR EXISTS (
+            SELECT 1
+            FROM monthly_evaluations historical
+            WHERE historical.employee_id = e.id
+              AND historical.year = @year
+              AND historical.month BETWEEN @from_month AND @to_month
+          )
+        )
         AND (
           @department_id IS NULL
           OR e.department_id IN (
