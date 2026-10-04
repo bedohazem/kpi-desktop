@@ -1,15 +1,15 @@
-import type { ReactElement } from 'react'
+import type { ReactElement } from 'react';
 
 type ConfirmDialogProps = {
-  open: boolean
-  title: string
-  message: string
-  confirmText?: string
-  cancelText?: string
-  danger?: boolean
-  onConfirm: () => void
-  onCancel: () => void
-}
+  open: boolean;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  danger?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+};
 
 export default function ConfirmDialog({
   open,
@@ -19,10 +19,10 @@ export default function ConfirmDialog({
   cancelText = 'إلغاء',
   danger = false,
   onConfirm,
-  onCancel
+  onCancel,
 }: ConfirmDialogProps): ReactElement | null {
   if (!open) {
-    return null
+    return null;
   }
 
   return (
@@ -36,11 +36,14 @@ export default function ConfirmDialog({
             {cancelText}
           </button>
 
-          <button className={danger ? 'danger-button' : 'primary-button'} onClick={onConfirm}>
+          <button
+            className={danger ? 'danger-button' : 'primary-button'}
+            onClick={onConfirm}
+          >
             {confirmText}
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 }

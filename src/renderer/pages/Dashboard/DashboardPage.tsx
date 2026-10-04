@@ -1,44 +1,45 @@
-import { useEffect, useState, type ReactElement } from 'react'
-import type { DashboardStats } from '../../types/api'
-import { toast } from '../../utils/toast'
+import { useEffect, useState, type ReactElement } from 'react';
+import type { DashboardStats } from '../../types/api';
+import { toast } from '../../utils/toast';
 
 export default function DashboardPage(): ReactElement {
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   async function loadStats(): Promise<void> {
     try {
-      setIsLoading(true)
-      const result = await window.api.dashboard.stats()
-      setStats(result)
+      setIsLoading(true);
+      const result = await window.api.dashboard.stats();
+      setStats(result);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء تحميل الرئيسية'
-      toast.error(errorMessage)
+      const errorMessage =
+        error instanceof Error ? error.message : 'حدث خطأ أثناء تحميل الرئيسية';
+      toast.error(errorMessage);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
   useEffect(() => {
-    let isMounted = true
+    let isMounted = true;
 
     window.api.dashboard
       .stats()
       .then((result) => {
         if (isMounted) {
-          setStats(result)
+          setStats(result);
         }
       })
       .catch(() => {
         if (isMounted) {
-          toast.error('حدث خطأ أثناء تحميل الرئيسية')
+          toast.error('حدث خطأ أثناء تحميل الرئيسية');
         }
-      })
+      });
 
     return () => {
-      isMounted = false
-    }
-  }, [])
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <>
@@ -47,11 +48,16 @@ export default function DashboardPage(): ReactElement {
           <div>
             <h2>الرئيسية</h2>
             <span>
-              ملخص شهر {stats?.currentMonth || '-'} / {stats?.currentYear || '-'}
+              ملخص شهر {stats?.currentMonth || '-'} /{' '}
+              {stats?.currentYear || '-'}
             </span>
           </div>
 
-          <button className="secondary-button" disabled={isLoading} onClick={loadStats}>
+          <button
+            className="secondary-button"
+            disabled={isLoading}
+            onClick={loadStats}
+          >
             {isLoading ? 'جاري التحديث...' : 'تحديث'}
           </button>
         </div>
@@ -99,5 +105,5 @@ export default function DashboardPage(): ReactElement {
         </div>
       </section>
     </>
-  )
+  );
 }

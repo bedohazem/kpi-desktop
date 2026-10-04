@@ -1,3 +1,3 @@
 export type MutationResult = {
-  success: boolean
-}
+  success: boolean;
+};

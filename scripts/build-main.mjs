@@ -1,4 +1,4 @@
-import { build } from 'esbuild'
+import { build } from 'esbuild';
 
 await build({
   entryPoints: ['src/main/index.ts'],
@@ -9,7 +9,7 @@ await build({
   target: 'node22',
   minify: false,
   sourcemap: false,
-  external: ['electron', 'better-sqlite3']
-})
+  external: ['electron', 'better-sqlite3'],
+});
 
-console.log('Built main process to dist/main/index.cjs')
+console.log('Built main process to dist/main/index.cjs');

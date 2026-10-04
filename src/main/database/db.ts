@@ -1,22 +1,22 @@
-import Database from 'better-sqlite3'
-import { app } from 'electron'
-import fs from 'node:fs'
-import path from 'node:path'
+import Database from 'better-sqlite3';
+import { app } from 'electron';
+import fs from 'node:fs';
+import path from 'node:path';
 
-let db: Database.Database | null = null
+let db: Database.Database | null = null;
 
 export function getDbPath(): string {
-  const dataDir = path.join(app.getPath('userData'), 'data')
+  const dataDir = path.join(app.getPath('userData'), 'data');
 
   if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true })
+    fs.mkdirSync(dataDir, { recursive: true });
   }
 
-  return path.join(dataDir, 'kpi.sqlite')
+  return path.join(dataDir, 'kpi.sqlite');
 }
 
 function migrateDb(database: Database.Database): void {
-  database.pragma('foreign_keys = ON')
+  database.pragma('foreign_keys = ON');
 
   database.exec(`
     CREATE TABLE IF NOT EXISTS departments (
@@ -59,36 +59,36 @@ function migrateDb(database: Database.Database): void {
       FOREIGN KEY(employee_id) REFERENCES employees(id),
       UNIQUE(employee_id, month, year)
     );
-  `)
+  `);
 
   const departmentColumns = database
     .prepare(`PRAGMA table_info(departments)`)
-    .all() as Array<{ name: string }>
+    .all() as Array<{ name: string }>;
 
   const hasDepartmentSortOrder = departmentColumns.some(
-    (column) => column.name === 'sort_order'
-  )
+    (column) => column.name === 'sort_order',
+  );
 
   if (!hasDepartmentSortOrder) {
     database.exec(`
       ALTER TABLE departments
       ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
-    `)
+    `);
   }
 
   const employeeColumns = database
     .prepare(`PRAGMA table_info(employees)`)
-    .all() as Array<{ name: string }>
+    .all() as Array<{ name: string }>;
 
   const hasSortOrder = employeeColumns.some(
-    (column) => column.name === 'sort_order'
-  )
+    (column) => column.name === 'sort_order',
+  );
 
   if (!hasSortOrder) {
     database.exec(`
       ALTER TABLE employees
       ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
-    `)
+    `);
   }
 
   const duplicateNationalId = database
@@ -101,38 +101,38 @@ function migrateDb(database: Database.Database): void {
       GROUP BY national_id
       HAVING COUNT(*) > 1
       LIMIT 1
-    `
+    `,
     )
-    .get() as { national_id: string } | undefined
+    .get() as { national_id: string } | undefined;
 
   if (!duplicateNationalId) {
     database.exec(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_national_id_unique
       ON employees(national_id)
       WHERE national_id IS NOT NULL AND TRIM(national_id) <> '';
-    `)
+    `);
   }
 }
 
 export function initDb(): string {
-  const dbPath = getDbPath()
+  const dbPath = getDbPath();
 
   if (!db) {
-    db = new Database(dbPath)
-    migrateDb(db)
+    db = new Database(dbPath);
+    migrateDb(db);
   }
 
-  return dbPath
+  return dbPath;
 }
 
 export function getDb(): Database.Database {
   if (!db) {
-    initDb()
+    initDb();
   }
 
   if (!db) {
-    throw new Error('Database is not initialized')
+    throw new Error('Database is not initialized');
   }
 
-  return db
+  return db;
 }

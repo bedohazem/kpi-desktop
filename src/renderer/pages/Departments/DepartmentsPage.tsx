@@ -1,76 +1,90 @@
-import { useEffect, useMemo, useState, type ReactElement } from 'react'
-import ConfirmDialog from '../../components/ui/ConfirmDialog'
-import type { Department } from '../../types/api'
-import { toast } from '../../utils/toast'
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import type { Department } from '../../types/api';
+import { toast } from '../../utils/toast';
 import {
   flattenDepartmentTree,
-  getDepartmentAndDescendantIds
-} from '../../utils/departments-tree'
-
+  getDepartmentAndDescendantIds,
+} from '../../utils/departments-tree';
 
 export default function DepartmentsPage(): ReactElement {
-  const [departments, setDepartments] = useState<Department[]>([])
+  const [departments, setDepartments] = useState<Department[]>([]);
 
-  const [departmentName, setDepartmentName] = useState('')
-  const [parentId, setParentId] = useState('')
-  const [departmentSortOrder,setDepartmentSortOrder] = useState('')
-  const [departmentNotes, setDepartmentNotes] = useState('')
-  const [departmentActive, setDepartmentActive] = useState(true)
+  const [departmentName, setDepartmentName] = useState('');
+  const [parentId, setParentId] = useState('');
+  const [departmentSortOrder, setDepartmentSortOrder] = useState('');
+  const [departmentNotes, setDepartmentNotes] = useState('');
+  const [departmentActive, setDepartmentActive] = useState(true);
 
-  const [isSavingDepartment, setIsSavingDepartment] = useState(false)
-  const [editingDepartmentId, setEditingDepartmentId] = useState<number | null>(null)
-  const [showInactiveDepartments, setShowInactiveDepartments] = useState(false)
-  const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null)
+  const [isSavingDepartment, setIsSavingDepartment] = useState(false);
+  const [editingDepartmentId, setEditingDepartmentId] = useState<number | null>(
+    null,
+  );
+  const [showInactiveDepartments, setShowInactiveDepartments] = useState(false);
+  const [pinDepartmentHeader, setPinDepartmentHeader] = useState(() => {
+    return localStorage.getItem('pinDepartmentHeader') !== 'false';
+  });
+  const [departmentToDelete, setDepartmentToDelete] =
+    useState<Department | null>(null);
 
-  const departmentTreeRows = useMemo(() => flattenDepartmentTree(departments), [departments])
+  const departmentTreeRows = useMemo(
+    () => flattenDepartmentTree(departments),
+    [departments],
+  );
 
   const blockedParentIds = useMemo(() => {
     if (!editingDepartmentId) {
-      return new Set<number>()
+      return new Set<number>();
     }
 
-    return new Set(getDepartmentAndDescendantIds(departments, editingDepartmentId))
-  }, [departments, editingDepartmentId])
+    return new Set(
+      getDepartmentAndDescendantIds(departments, editingDepartmentId),
+    );
+  }, [departments, editingDepartmentId]);
 
   const parentDepartmentOptions = useMemo(() => {
-    return departmentTreeRows.filter((department) => !blockedParentIds.has(department.id))
-  }, [departmentTreeRows, blockedParentIds])
+    return departmentTreeRows.filter(
+      (department) => !blockedParentIds.has(department.id),
+    );
+  }, [departmentTreeRows, blockedParentIds]);
 
   async function loadDepartments(): Promise<void> {
     const rows = await window.api.departments.list({
-      includeInactive: showInactiveDepartments
-    })
+      includeInactive: showInactiveDepartments,
+    });
 
-    setDepartments(rows)
+    setDepartments(rows);
   }
 
   function resetDepartmentForm(): void {
-    setEditingDepartmentId(null)
-    setDepartmentName('')
-    setParentId('')
-    setDepartmentSortOrder('')
-    setDepartmentNotes('')
-    setDepartmentActive(true)
+    setEditingDepartmentId(null);
+    setDepartmentName('');
+    setParentId('');
+    setDepartmentSortOrder('');
+    setDepartmentNotes('');
+    setDepartmentActive(true);
   }
 
   function startEditDepartment(department: Department): void {
-    setEditingDepartmentId(department.id)
-    setDepartmentName(department.name)
-    setParentId(department.parent_id ? String(department.parent_id) : '')
-    setDepartmentSortOrder(department.sort_order > 0 ? String(department.sort_order) : '')
-    setDepartmentNotes(department.notes || '')
-    setDepartmentActive(Boolean(department.active))
-    toast.info('تعديل بيانات الإدارة')
+    setEditingDepartmentId(department.id);
+    setDepartmentName(department.name);
+    setParentId(department.parent_id ? String(department.parent_id) : '');
+    setDepartmentSortOrder(
+      department.sort_order > 0 ? String(department.sort_order) : '',
+    );
+    setDepartmentNotes(department.notes || '');
+    setDepartmentActive(Boolean(department.active));
+    toast.info('تعديل بيانات الإدارة');
   }
 
   async function saveDepartment(): Promise<void> {
     if (!departmentName.trim()) {
-      toast.warning('اكتب اسم الإدارة')
-      return
+      toast.warning('اكتب اسم الإدارة');
+      return;
     }
 
     try {
-      setIsSavingDepartment(true)
+      setIsSavingDepartment(true);
 
       if (editingDepartmentId) {
         await window.api.departments.update({
@@ -79,99 +93,110 @@ export default function DepartmentsPage(): ReactElement {
           parent_id: parentId ? Number(parentId) : null,
           sort_order: departmentSortOrder ? Number(departmentSortOrder) : 0,
           notes: departmentNotes,
-          active: departmentActive
-        })
+          active: departmentActive,
+        });
 
-        toast.success('تم تعديل الإدارة بنجاح')
+        toast.success('تم تعديل الإدارة بنجاح');
       } else {
         await window.api.departments.create({
           name: departmentName,
           parent_id: parentId ? Number(parentId) : null,
           sort_order: departmentSortOrder ? Number(departmentSortOrder) : 0,
           notes: departmentNotes,
-          active: departmentActive
-        })
+          active: departmentActive,
+        });
 
-        toast.success('تم حفظ الإدارة بنجاح')
+        toast.success('تم حفظ الإدارة بنجاح');
       }
 
-      resetDepartmentForm()
-      await loadDepartments()
+      resetDepartmentForm();
+      await loadDepartments();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء حفظ الإدارة'
-      toast.error(errorMessage)
+      const errorMessage =
+        error instanceof Error ? error.message : 'حدث خطأ أثناء حفظ الإدارة';
+      toast.error(errorMessage);
     } finally {
-      setIsSavingDepartment(false)
+      setIsSavingDepartment(false);
     }
   }
 
   async function toggleDepartmentActive(department: Department): Promise<void> {
-    const nextActive = !department.active
+    const nextActive = !department.active;
 
     try {
       await window.api.departments.setActive({
         id: department.id,
-        active: nextActive
-      })
+        active: nextActive,
+      });
 
-      toast.success(nextActive ? 'تم تفعيل الإدارة' : 'تم تعطيل الإدارة')
-      await loadDepartments()
+      toast.success(nextActive ? 'تم تفعيل الإدارة' : 'تم تعطيل الإدارة');
+      await loadDepartments();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء تغيير حالة الإدارة'
-      toast.error(errorMessage)
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'حدث خطأ أثناء تغيير حالة الإدارة';
+      toast.error(errorMessage);
     }
   }
 
   async function confirmDeleteDepartment(): Promise<void> {
     if (!departmentToDelete) {
-      return
+      return;
     }
 
     try {
       await window.api.departments.delete({
-        id: departmentToDelete.id
-      })
+        id: departmentToDelete.id,
+      });
 
-      toast.success('تم حذف الإدارة بنجاح')
+      toast.success('تم حذف الإدارة بنجاح');
 
       if (editingDepartmentId === departmentToDelete.id) {
-        resetDepartmentForm()
+        resetDepartmentForm();
       }
 
-      setDepartmentToDelete(null)
-      await loadDepartments()
+      setDepartmentToDelete(null);
+      await loadDepartments();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء حذف الإدارة'
-      toast.error(errorMessage)
+      const errorMessage =
+        error instanceof Error ? error.message : 'حدث خطأ أثناء حذف الإدارة';
+      toast.error(errorMessage);
     }
   }
 
   useEffect(() => {
-    let isMounted = true
+    let isMounted = true;
 
     window.api.departments
       .list({
-        includeInactive: showInactiveDepartments
+        includeInactive: showInactiveDepartments,
       })
       .then((rows) => {
         if (isMounted) {
-          setDepartments(rows)
+          setDepartments(rows);
         }
       })
       .catch(() => {
         if (isMounted) {
-          toast.error('حدث خطأ أثناء تحميل الإدارات')
+          toast.error('حدث خطأ أثناء تحميل الإدارات');
         }
-      })
+      });
 
     return () => {
-      isMounted = false
-    }
-  }, [showInactiveDepartments])
+      isMounted = false;
+    };
+  }, [showInactiveDepartments]);
+
+  useEffect(() => {
+    localStorage.setItem('pinDepartmentHeader', String(pinDepartmentHeader));
+  }, [pinDepartmentHeader]);
 
   return (
     <>
-      <section className="card sticky-entry-card">
+      <section
+        className={`card ${pinDepartmentHeader ? 'sticky-entry-card' : ''}`}
+      >
         <h2>{editingDepartmentId ? 'تعديل إدارة' : 'إضافة إدارة'}</h2>
 
         <div className="form-grid">
@@ -185,29 +210,30 @@ export default function DepartmentsPage(): ReactElement {
 
           <label>
             تابعة لـ
-            <select value={parentId} onChange={(event) => setParentId(event.target.value)}>
+            <select
+              value={parentId}
+              onChange={(event) => setParentId(event.target.value)}
+            >
               <option value="">بدون إدارة رئيسية</option>
-                {parentDepartmentOptions.map((department) => (
-                  <option key={department.id} value={department.id}>
-                    {'— '.repeat(department.level)}
-                    {department.name}
-                  </option>
-                ))}
+              {parentDepartmentOptions.map((department) => (
+                <option key={department.id} value={department.id}>
+                  {'— '.repeat(department.level)}
+                  {department.name}
+                </option>
+              ))}
             </select>
           </label>
 
           <label>
             الترتيب داخل نفس المستوى
-
             <input
               value={departmentSortOrder}
               inputMode="numeric"
               placeholder="1 للأولى، 2 للثانية..."
               onChange={(event) => {
-                const value =
-                  event.target.value.replace(/\D/g, '')
+                const value = event.target.value.replace(/\D/g, '');
 
-                setDepartmentSortOrder(value)
+                setDepartmentSortOrder(value);
               }}
             />
           </label>
@@ -228,10 +254,22 @@ export default function DepartmentsPage(): ReactElement {
             />
             إدارة نشطة
           </label>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={pinDepartmentHeader}
+              onChange={(event) => setPinDepartmentHeader(event.target.checked)}
+            />
+            تثبيت بيانات الإدارة أعلى الشاشة
+          </label>
         </div>
 
         <div className="actions-row">
-          <button className="primary-button" disabled={isSavingDepartment} onClick={saveDepartment}>
+          <button
+            className="primary-button"
+            disabled={isSavingDepartment}
+            onClick={saveDepartment}
+          >
             {isSavingDepartment
               ? 'جاري الحفظ...'
               : editingDepartmentId
@@ -240,7 +278,11 @@ export default function DepartmentsPage(): ReactElement {
           </button>
 
           {editingDepartmentId && (
-            <button className="secondary-button" type="button" onClick={resetDepartmentForm}>
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={resetDepartmentForm}
+            >
               إلغاء التعديل
             </button>
           )}
@@ -257,7 +299,9 @@ export default function DepartmentsPage(): ReactElement {
           <input
             type="checkbox"
             checked={showInactiveDepartments}
-            onChange={(event) => setShowInactiveDepartments(event.target.checked)}
+            onChange={(event) =>
+              setShowInactiveDepartments(event.target.checked)
+            }
           />
           إظهار غير النشطة
         </label>
@@ -285,28 +329,37 @@ export default function DepartmentsPage(): ReactElement {
                   <td>
                     <span
                       className="department-tree-name"
-                      style={{ paddingInlineStart: `${department.level * 22}px` }}
+                      style={{
+                        paddingInlineStart: `${department.level * 22}px`,
+                      }}
                     >
-                      <span className="department-tree-branch">{department.level === 0 ? '●' : '↳'}</span>
+                      <span className="department-tree-branch">
+                        {department.level === 0 ? '●' : '↳'}
+                      </span>
                       {department.name}
                     </span>
                   </td>
                   <td>{department.parent_name || '-'}</td>
                   <td>
-                    {department.sort_order > 0
-                      ? department.sort_order
-                      : '-'}
+                    {department.sort_order > 0 ? department.sort_order : '-'}
                   </td>
                   <td>{department.notes || '-'}</td>
                   <td>{department.active ? 'نشطة' : 'غير نشطة'}</td>
                   <td>
                     <div className="table-actions">
-                      <button className="small-button" onClick={() => startEditDepartment(department)}>
+                      <button
+                        className="small-button"
+                        onClick={() => startEditDepartment(department)}
+                      >
                         تعديل
                       </button>
 
                       <button
-                        className={department.active ? 'small-button danger' : 'small-button success'}
+                        className={
+                          department.active
+                            ? 'small-button danger'
+                            : 'small-button success'
+                        }
                         onClick={() => toggleDepartmentActive(department)}
                       >
                         {department.active ? 'تعطيل' : 'تفعيل'}
@@ -335,10 +388,10 @@ export default function DepartmentsPage(): ReactElement {
         cancelText="إلغاء"
         danger
         onConfirm={() => {
-          void confirmDeleteDepartment()
+          void confirmDeleteDepartment();
         }}
         onCancel={() => setDepartmentToDelete(null)}
       />
     </>
-  )
+  );
 }

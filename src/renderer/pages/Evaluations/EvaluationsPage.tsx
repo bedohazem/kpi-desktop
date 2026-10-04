@@ -5,14 +5,14 @@ import {
   useState,
   type KeyboardEvent,
   type ReactElement,
-} from "react";
-import type { Department, EvaluationEmployee } from "../../types/api";
-import { toast } from "../../utils/toast";
-import ConfirmDialog from "../../components/ui/ConfirmDialog";
+} from 'react';
+import type { Department, EvaluationEmployee } from '../../types/api';
+import { toast } from '../../utils/toast';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import {
   flattenDepartmentTree,
   sortEmployeesByDepartmentTree,
-} from "../../utils/departments-tree";
+} from '../../utils/departments-tree';
 
 type EvaluationRowState = EvaluationEmployee & {
   evaluationValueInput: string;
@@ -27,11 +27,11 @@ export default function EvaluationsPage(): ReactElement {
 
   const [month, setMonth] = useState(String(currentDate.getMonth() + 1));
   const [year, setYear] = useState(String(currentDate.getFullYear()));
-  const [departmentId, setDepartmentId] = useState("");
+  const [departmentId, setDepartmentId] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [evaluationSearch, setEvaluationSearch] = useState("");
+  const [evaluationSearch, setEvaluationSearch] = useState('');
   const [showMissingOnly, setShowMissingOnly] = useState(false);
   const [activeEvaluationEmployeeId, setActiveEvaluationEmployeeId] = useState<
     number | null
@@ -80,8 +80,8 @@ export default function EvaluationsPage(): ReactElement {
       const matchesSearch =
         !searchText ||
         row.employee_name.toLowerCase().includes(searchText) ||
-        (row.job_title || "").toLowerCase().includes(searchText) ||
-        (row.department_name || "").toLowerCase().includes(searchText);
+        (row.job_title || '').toLowerCase().includes(searchText) ||
+        (row.department_name || '').toLowerCase().includes(searchText);
 
       const matchesMissing =
         !showMissingOnly ||
@@ -98,7 +98,7 @@ export default function EvaluationsPage(): ReactElement {
   ]);
 
   async function loadRows(): Promise<void> {
-    toast.info("جاري تحميل التقييمات...");
+    toast.info('جاري تحميل التقييمات...');
 
     try {
       setIsLoading(true);
@@ -113,17 +113,17 @@ export default function EvaluationsPage(): ReactElement {
         evaluationRows.map((row) => ({
           ...row,
           evaluationValueInput:
-            row.evaluation_value === null ? "" : String(row.evaluation_value),
-          notesInput: row.evaluation_notes || "",
+            row.evaluation_value === null ? '' : String(row.evaluation_value),
+          notesInput: row.evaluation_notes || '',
         })),
       );
 
-      toast.success("تم تحميل الموظفين");
+      toast.success('تم تحميل الموظفين');
     } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message
-          : "حدث خطأ أثناء تحميل التقييمات";
+          : 'حدث خطأ أثناء تحميل التقييمات';
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -131,10 +131,10 @@ export default function EvaluationsPage(): ReactElement {
   }
 
   async function saveEvaluations(): Promise<void> {
-    toast.info("جاري حفظ التقييمات...");
+    toast.info('جاري حفظ التقييمات...');
 
     if (rows.length === 0) {
-      toast.warning("لا توجد بيانات للحفظ");
+      toast.warning('لا توجد بيانات للحفظ');
       return;
     }
 
@@ -149,15 +149,15 @@ export default function EvaluationsPage(): ReactElement {
           evaluation_value: row.evaluationValueInput
             ? Number(row.evaluationValueInput)
             : 0,
-          notes: "",
+          notes: '',
         })),
       });
 
-      toast.success("تم حفظ تقييمات الشهر بنجاح");
+      toast.success('تم حفظ تقييمات الشهر بنجاح');
       await loadRows();
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "حدث خطأ أثناء حفظ التقييمات";
+        error instanceof Error ? error.message : 'حدث خطأ أثناء حفظ التقييمات';
       toast.error(errorMessage);
     } finally {
       setIsSaving(false);
@@ -166,7 +166,7 @@ export default function EvaluationsPage(): ReactElement {
 
   async function copyPreviousMonth(): Promise<void> {
     setCopyDialogOpen(false);
-    toast.info("جاري نسخ تقييمات الشهر السابق...");
+    toast.info('جاري نسخ تقييمات الشهر السابق...');
 
     try {
       const result = await window.api.evaluations.copyPreviousMonth({
@@ -179,13 +179,13 @@ export default function EvaluationsPage(): ReactElement {
       await loadRows();
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "حدث خطأ أثناء النسخ";
+        error instanceof Error ? error.message : 'حدث خطأ أثناء النسخ';
       toast.error(errorMessage);
     }
   }
 
   function updateEvaluationValue(employeeId: number, value: string): void {
-    const cleanValue = value.replace(/[^\d.]/g, "");
+    const cleanValue = value.replace(/[^\d.]/g, '');
 
     setRows((currentRows) =>
       currentRows.map((row) =>
@@ -208,7 +208,7 @@ export default function EvaluationsPage(): ReactElement {
       })
       .catch(() => {
         if (isMounted) {
-          toast.error("حدث خطأ أثناء تحميل الإدارات");
+          toast.error('حدث خطأ أثناء تحميل الإدارات');
         }
       });
 
@@ -236,7 +236,7 @@ export default function EvaluationsPage(): ReactElement {
     event: KeyboardEvent<HTMLInputElement>,
     currentIndex: number,
   ): void {
-    if (event.key !== "Enter") {
+    if (event.key !== 'Enter') {
       return;
     }
 
@@ -247,12 +247,12 @@ export default function EvaluationsPage(): ReactElement {
   function escapeEvaluationPdfHtml(
     value: string | number | null | undefined,
   ): string {
-    return String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
   }
 
   function buildMonthlyEvaluationsPdfHtml(): string {
@@ -268,15 +268,15 @@ export default function EvaluationsPage(): ReactElement {
         <tr>
           <td>${index + 1}</td>
           <td class="text-cell">${escapeEvaluationPdfHtml(row.employee_name)}</td>
-          <td class="text-cell">${escapeEvaluationPdfHtml(row.qualification || "-")}</td>
-          <td class="text-cell">${escapeEvaluationPdfHtml(row.department_name || "-")}</td>
-          <td class="text-cell">${escapeEvaluationPdfHtml(row.job_title || "-")}</td>
+          <td class="text-cell">${escapeEvaluationPdfHtml(row.qualification || '-')}</td>
+          <td class="text-cell">${escapeEvaluationPdfHtml(row.department_name || '-')}</td>
+          <td class="text-cell">${escapeEvaluationPdfHtml(row.job_title || '-')}</td>
           <td>${escapeEvaluationPdfHtml(row.evaluationValueInput)}</td>
-          <td class="text-cell">${escapeEvaluationPdfHtml(row.notesInput || "-")}</td>
+          <td class="text-cell">${escapeEvaluationPdfHtml(row.notesInput || '-')}</td>
         </tr>
       `,
       )
-      .join("");
+      .join('');
 
     return `
     <!doctype html>
@@ -370,7 +370,7 @@ export default function EvaluationsPage(): ReactElement {
 
             <div class="subtitle">
               الإدارة:
-              ${escapeEvaluationPdfHtml(selectedDepartment?.path || "كل الإدارات")}
+              ${escapeEvaluationPdfHtml(selectedDepartment?.path || 'كل الإدارات')}
               <br />
               عدد الموظفين: ${visibleEvaluationRows.length}
             </div>
@@ -382,7 +382,7 @@ export default function EvaluationsPage(): ReactElement {
             السنة: ${escapeEvaluationPdfHtml(year)}
             <br />
             تاريخ الطباعة:
-            ${escapeEvaluationPdfHtml(new Date().toLocaleDateString("ar-EG"))}
+            ${escapeEvaluationPdfHtml(new Date().toLocaleDateString('ar-EG'))}
           </div>
         </div>
 
@@ -423,7 +423,7 @@ export default function EvaluationsPage(): ReactElement {
 
   async function exportMonthlyEvaluationsToPdf(): Promise<void> {
     if (visibleEvaluationRows.length === 0) {
-      toast.warning("لا توجد تقييمات ظاهرة لتصديرها");
+      toast.warning('لا توجد تقييمات ظاهرة لتصديرها');
       return;
     }
 
@@ -436,16 +436,16 @@ export default function EvaluationsPage(): ReactElement {
       });
 
       if (result.canceled) {
-        toast.info("تم إلغاء حفظ PDF");
+        toast.info('تم إلغاء حفظ PDF');
         return;
       }
 
-      toast.success("تم حفظ قائمة تقييمات الشهر PDF");
+      toast.success('تم حفظ قائمة تقييمات الشهر PDF');
     } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message
-          : "حدث خطأ أثناء حفظ قائمة التقييمات";
+          : 'حدث خطأ أثناء حفظ قائمة التقييمات';
 
       toast.error(errorMessage);
     } finally {
@@ -464,7 +464,7 @@ export default function EvaluationsPage(): ReactElement {
             <input
               value={year}
               onChange={(event) =>
-                setYear(event.target.value.replace(/\D/g, ""))
+                setYear(event.target.value.replace(/\D/g, ''))
               }
             />
           </label>
@@ -494,7 +494,7 @@ export default function EvaluationsPage(): ReactElement {
               <option value="">كل الإدارات</option>
               {departmentOptions.map((department) => (
                 <option key={department.id} value={department.id}>
-                  {"— ".repeat(department.level)}
+                  {'— '.repeat(department.level)}
                   {department.name}
                 </option>
               ))}
@@ -508,7 +508,7 @@ export default function EvaluationsPage(): ReactElement {
             disabled={isLoading}
             onClick={loadRows}
           >
-            {isLoading ? "جاري التحميل..." : "تحميل الموظفين"}
+            {isLoading ? 'جاري التحميل...' : 'تحميل الموظفين'}
           </button>
 
           <button
@@ -523,7 +523,7 @@ export default function EvaluationsPage(): ReactElement {
             disabled={isSaving || rows.length === 0}
             onClick={saveEvaluations}
           >
-            {isSaving ? "جاري الحفظ..." : "حفظ التقييمات"}
+            {isSaving ? 'جاري الحفظ...' : 'حفظ التقييمات'}
           </button>
 
           <button
@@ -531,7 +531,7 @@ export default function EvaluationsPage(): ReactElement {
             disabled={isExportingPdf || visibleEvaluationRows.length === 0}
             onClick={exportMonthlyEvaluationsToPdf}
           >
-            {isExportingPdf ? "جاري إنشاء PDF..." : "قائمة تقييمات الشهر PDF"}
+            {isExportingPdf ? 'جاري إنشاء PDF...' : 'قائمة تقييمات الشهر PDF'}
           </button>
         </div>
       </section>
@@ -618,8 +618,8 @@ export default function EvaluationsPage(): ReactElement {
                 <tr>
                   <td colSpan={7}>
                     {rows.length === 0
-                      ? "اختار الشهر ثم اضغط تحميل الموظفين"
-                      : "لا توجد نتائج مطابقة للبحث"}
+                      ? 'اختار الشهر ثم اضغط تحميل الموظفين'
+                      : 'لا توجد نتائج مطابقة للبحث'}
                   </td>
                 </tr>
               ) : (
@@ -627,9 +627,9 @@ export default function EvaluationsPage(): ReactElement {
                   <tr key={row.employee_id}>
                     <td>{index + 1}</td>
                     <td>{row.employee_name}</td>
-                    <td>{row.qualification || "-"}</td>
-                    <td>{row.department_name || "-"}</td>
-                    <td>{row.job_title || "-"}</td>
+                    <td>{row.qualification || '-'}</td>
+                    <td>{row.department_name || '-'}</td>
+                    <td>{row.job_title || '-'}</td>
                     <td>
                       <input
                         ref={(element) => {
@@ -657,7 +657,7 @@ export default function EvaluationsPage(): ReactElement {
                         }
                       />
                     </td>
-                    <td>{row.notesInput || "-"}</td>
+                    <td>{row.notesInput || '-'}</td>
                   </tr>
                 ))
               )}

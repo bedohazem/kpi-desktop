@@ -1,16 +1,16 @@
-import { getDb } from '../db'
-import type { MutationResult } from '../../types/common'
+import { getDb } from '../db';
+import type { MutationResult } from '../../types/common';
 import type {
   CreateEmployeeInput,
   DeleteEmployeeInput,
   EmployeeRow,
   ListEmployeesInput,
   SetEmployeeActiveInput,
-  UpdateEmployeeInput
-} from '../../types/employees'
+  UpdateEmployeeInput,
+} from '../../types/employees';
 
 export function listEmployees(input: ListEmployeesInput = {}): EmployeeRow[] {
-  const db = getDb()
+  const db = getDb();
 
   return db
     .prepare(
@@ -36,32 +36,32 @@ export function listEmployees(input: ListEmployeesInput = {}): EmployeeRow[] {
         e.sort_order ASC,
         e.name COLLATE NOCASE ASC,
         e.id ASC
-    `
+    `,
     )
     .all({
-      includeInactive: input.includeInactive ? 1 : 0
-    }) as EmployeeRow[]
+      includeInactive: input.includeInactive ? 1 : 0,
+    }) as EmployeeRow[];
 }
 
 export function createEmployee(input: CreateEmployeeInput): MutationResult {
-  const name = input.name.trim()
-  const nationalId = input.national_id.trim()
+  const name = input.name.trim();
+  const nationalId = input.national_id.trim();
 
-  const sortOrder = Number(input.sort_order)
+  const sortOrder = Number(input.sort_order);
 
   if (!Number.isInteger(sortOrder) || sortOrder < 0) {
-    throw new Error('الترتيب داخل الإدارة غير صحيح')
+    throw new Error('الترتيب داخل الإدارة غير صحيح');
   }
 
   if (!name) {
-    throw new Error('اسم الموظف مطلوب')
+    throw new Error('اسم الموظف مطلوب');
   }
 
   if (!/^\d{14}$/.test(nationalId)) {
-    throw new Error('الرقم القومي لازم يكون 14 رقم بالظبط')
+    throw new Error('الرقم القومي لازم يكون 14 رقم بالظبط');
   }
 
-  const db = getDb()
+  const db = getDb();
 
   const existingNationalId = db
     .prepare(
@@ -70,12 +70,12 @@ export function createEmployee(input: CreateEmployeeInput): MutationResult {
       FROM employees
       WHERE national_id = ?
       LIMIT 1
-    `
+    `,
     )
-    .get(nationalId) as { id: number } | undefined
+    .get(nationalId) as { id: number } | undefined;
 
   if (existingNationalId) {
-    throw new Error('الرقم القومي مسجل لموظف آخر')
+    throw new Error('الرقم القومي مسجل لموظف آخر');
   }
 
   try {
@@ -101,7 +101,7 @@ export function createEmployee(input: CreateEmployeeInput): MutationResult {
         @notes,
         @active
       )
-    `
+    `,
     ).run({
       name,
       national_id: nationalId,
@@ -110,43 +110,43 @@ export function createEmployee(input: CreateEmployeeInput): MutationResult {
       department_id: input.department_id,
       sort_order: sortOrder,
       notes: input.notes.trim(),
-      active: input.active ? 1 : 0
-    })
+      active: input.active ? 1 : 0,
+    });
   } catch (error) {
     if (error instanceof Error && error.message.includes('UNIQUE')) {
-      throw new Error('الرقم القومي أو بيانات الموظف مسجلة قبل كده')
+      throw new Error('الرقم القومي أو بيانات الموظف مسجلة قبل كده');
     }
 
-    throw error
+    throw error;
   }
 
-  return { success: true }
+  return { success: true };
 }
 
 export function updateEmployee(input: UpdateEmployeeInput): MutationResult {
-  const id = Number(input.id)
-  const name = input.name.trim()
-  const nationalId = input.national_id.trim()
+  const id = Number(input.id);
+  const name = input.name.trim();
+  const nationalId = input.national_id.trim();
 
-  const sortOrder = Number(input.sort_order)
+  const sortOrder = Number(input.sort_order);
 
   if (!Number.isInteger(sortOrder) || sortOrder < 0) {
-    throw new Error('الترتيب داخل الإدارة غير صحيح')
+    throw new Error('الترتيب داخل الإدارة غير صحيح');
   }
 
   if (!id) {
-    throw new Error('الموظف غير صحيح')
+    throw new Error('الموظف غير صحيح');
   }
 
   if (!name) {
-    throw new Error('اسم الموظف مطلوب')
+    throw new Error('اسم الموظف مطلوب');
   }
 
   if (!/^\d{14}$/.test(nationalId)) {
-    throw new Error('الرقم القومي لازم يكون 14 رقم بالظبط')
+    throw new Error('الرقم القومي لازم يكون 14 رقم بالظبط');
   }
 
-  const db = getDb()
+  const db = getDb();
 
   const existingNationalId = db
     .prepare(
@@ -156,12 +156,12 @@ export function updateEmployee(input: UpdateEmployeeInput): MutationResult {
       WHERE national_id = ?
         AND id <> ?
       LIMIT 1
-    `
+    `,
     )
-    .get(nationalId, id) as { id: number } | undefined
+    .get(nationalId, id) as { id: number } | undefined;
 
   if (existingNationalId) {
-    throw new Error('الرقم القومي مسجل لموظف آخر')
+    throw new Error('الرقم القومي مسجل لموظف آخر');
   }
 
   const result = db
@@ -179,7 +179,7 @@ export function updateEmployee(input: UpdateEmployeeInput): MutationResult {
         active = @active,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = @id
-    `
+    `,
     )
     .run({
       id,
@@ -190,24 +190,26 @@ export function updateEmployee(input: UpdateEmployeeInput): MutationResult {
       department_id: input.department_id,
       sort_order: sortOrder,
       notes: input.notes.trim(),
-      active: input.active ? 1 : 0
-    })
+      active: input.active ? 1 : 0,
+    });
 
   if (result.changes === 0) {
-    throw new Error('الموظف غير موجود')
+    throw new Error('الموظف غير موجود');
   }
 
-  return { success: true }
+  return { success: true };
 }
 
-export function setEmployeeActive(input: SetEmployeeActiveInput): MutationResult {
-  const id = Number(input.id)
+export function setEmployeeActive(
+  input: SetEmployeeActiveInput,
+): MutationResult {
+  const id = Number(input.id);
 
   if (!id) {
-    throw new Error('الموظف غير صحيح')
+    throw new Error('الموظف غير صحيح');
   }
 
-  const db = getDb()
+  const db = getDb();
 
   const result = db
     .prepare(
@@ -217,53 +219,52 @@ export function setEmployeeActive(input: SetEmployeeActiveInput): MutationResult
         active = @active,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = @id
-    `
+    `,
     )
     .run({
       id,
-      active: input.active ? 1 : 0
-    })
+      active: input.active ? 1 : 0,
+    });
 
   if (result.changes === 0) {
-    throw new Error('الموظف غير موجود')
+    throw new Error('الموظف غير موجود');
   }
 
-  return { success: true }
+  return { success: true };
 }
 
-
 export function deleteEmployee(input: DeleteEmployeeInput): MutationResult {
-  const id = Number(input.id)
+  const id = Number(input.id);
 
   if (!id) {
-    throw new Error('الموظف غير صحيح')
+    throw new Error('الموظف غير صحيح');
   }
 
-  const db = getDb()
+  const db = getDb();
 
   const transaction = db.transaction(() => {
     db.prepare(
       `
       DELETE FROM monthly_evaluations
       WHERE employee_id = ?
-    `
-    ).run(id)
+    `,
+    ).run(id);
 
     const result = db
       .prepare(
         `
         DELETE FROM employees
         WHERE id = ?
-      `
+      `,
       )
-      .run(id)
+      .run(id);
 
     if (result.changes === 0) {
-      throw new Error('الموظف غير موجود')
+      throw new Error('الموظف غير موجود');
     }
-  })
+  });
 
-  transaction()
+  transaction();
 
-  return { success: true }
+  return { success: true };
 }

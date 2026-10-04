@@ -1,39 +1,38 @@
-import { getDb } from '../db'
-import type { MutationResult } from '../../types/common'
+import { getDb } from '../db';
+import type { MutationResult } from '../../types/common';
 import type {
   CreateDepartmentInput,
   DeleteDepartmentInput,
   DepartmentRow,
   ListDepartmentsInput,
   SetDepartmentActiveInput,
-  UpdateDepartmentInput
-} from '../../types/departments'
-import type Database from 'better-sqlite3'
-
+  UpdateDepartmentInput,
+} from '../../types/departments';
+import type Database from 'better-sqlite3';
 
 function validateParentDepartment(
   db: Database.Database,
   departmentId: number | null,
-  parentId: number | null
+  parentId: number | null,
 ): void {
   if (parentId === null) {
-    return
+    return;
   }
 
-  const parent = db.prepare(`SELECT id FROM departments WHERE id = ? LIMIT 1`).get(parentId) as
-    | { id: number }
-    | undefined
+  const parent = db
+    .prepare(`SELECT id FROM departments WHERE id = ? LIMIT 1`)
+    .get(parentId) as { id: number } | undefined;
 
   if (!parent) {
-    throw new Error('الإدارة الرئيسية غير موجودة')
+    throw new Error('الإدارة الرئيسية غير موجودة');
   }
 
   if (departmentId && parentId === departmentId) {
-    throw new Error('الإدارة لا يمكن أن تكون تابعة لنفسها')
+    throw new Error('الإدارة لا يمكن أن تكون تابعة لنفسها');
   }
 
   if (!departmentId) {
-    return
+    return;
   }
 
   const invalidParent = db
@@ -54,20 +53,22 @@ function validateParentDepartment(
       FROM children
       WHERE id = @parentId
       LIMIT 1
-    `
+    `,
     )
     .get({
       departmentId,
-      parentId
-    }) as { id: number } | undefined
+      parentId,
+    }) as { id: number } | undefined;
 
   if (invalidParent) {
-    throw new Error('لا يمكن اختيار إدارة تابعة كإدارة رئيسية')
+    throw new Error('لا يمكن اختيار إدارة تابعة كإدارة رئيسية');
   }
 }
 
-export function listDepartments(input: ListDepartmentsInput = {}): DepartmentRow[] {
-  const db = getDb()
+export function listDepartments(
+  input: ListDepartmentsInput = {},
+): DepartmentRow[] {
+  const db = getDb();
 
   return db
     .prepare(
@@ -90,33 +91,28 @@ export function listDepartments(input: ListDepartmentsInput = {}): DepartmentRow
         d.sort_order ASC,
         d.name COLLATE NOCASE ASC,
         d.id ASC
-    `
+    `,
     )
     .all({
-      includeInactive: input.includeInactive ? 1 : 0
-    }) as DepartmentRow[]
+      includeInactive: input.includeInactive ? 1 : 0,
+    }) as DepartmentRow[];
 }
 
 export function createDepartment(input: CreateDepartmentInput): MutationResult {
-  const name = input.name.trim()
+  const name = input.name.trim();
 
-  const sortOrder = Number(input.sort_order)
+  const sortOrder = Number(input.sort_order);
 
-  if (
-    !Number.isInteger(sortOrder) ||
-    sortOrder < 0
-  ) {
-    throw new Error(
-      'ترتيب الإدارة غير صحيح'
-    )
+  if (!Number.isInteger(sortOrder) || sortOrder < 0) {
+    throw new Error('ترتيب الإدارة غير صحيح');
   }
 
   if (!name) {
-    throw new Error('اسم الإدارة مطلوب')
+    throw new Error('اسم الإدارة مطلوب');
   }
 
-  const db = getDb()
-  validateParentDepartment(db, null, input.parent_id)
+  const db = getDb();
+  validateParentDepartment(db, null, input.parent_id);
 
   try {
     db.prepare(
@@ -135,50 +131,45 @@ export function createDepartment(input: CreateDepartmentInput): MutationResult {
         @notes,
         @active
       )
-    `
+    `,
     ).run({
       name,
       parent_id: input.parent_id,
       sort_order: sortOrder,
       notes: input.notes.trim(),
-      active: input.active ? 1 : 0
-    })
+      active: input.active ? 1 : 0,
+    });
   } catch (error) {
     if (error instanceof Error && error.message.includes('UNIQUE')) {
-      throw new Error('اسم الإدارة موجود قبل كده')
+      throw new Error('اسم الإدارة موجود قبل كده');
     }
 
-    throw error
+    throw error;
   }
 
-  return { success: true }
+  return { success: true };
 }
 
 export function updateDepartment(input: UpdateDepartmentInput): MutationResult {
-  const id = Number(input.id)
-  const name = input.name.trim()
+  const id = Number(input.id);
+  const name = input.name.trim();
 
-  const sortOrder = Number(input.sort_order)
+  const sortOrder = Number(input.sort_order);
 
-  if (
-    !Number.isInteger(sortOrder) ||
-    sortOrder < 0
-  ) {
-    throw new Error(
-      'ترتيب الإدارة غير صحيح'
-    )
+  if (!Number.isInteger(sortOrder) || sortOrder < 0) {
+    throw new Error('ترتيب الإدارة غير صحيح');
   }
 
   if (!id) {
-    throw new Error('الإدارة غير صحيحة')
+    throw new Error('الإدارة غير صحيحة');
   }
 
   if (!name) {
-    throw new Error('اسم الإدارة مطلوب')
+    throw new Error('اسم الإدارة مطلوب');
   }
 
-  const db = getDb()
-  validateParentDepartment(db, id, input.parent_id)
+  const db = getDb();
+  validateParentDepartment(db, id, input.parent_id);
 
   const existingName = db
     .prepare(
@@ -188,12 +179,12 @@ export function updateDepartment(input: UpdateDepartmentInput): MutationResult {
       WHERE name = ?
         AND id <> ?
       LIMIT 1
-    `
+    `,
     )
-    .get(name, id) as { id: number } | undefined
+    .get(name, id) as { id: number } | undefined;
 
   if (existingName) {
-    throw new Error('اسم الإدارة موجود قبل كده')
+    throw new Error('اسم الإدارة موجود قبل كده');
   }
 
   const result = db
@@ -208,7 +199,7 @@ export function updateDepartment(input: UpdateDepartmentInput): MutationResult {
         active = @active,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = @id
-    `
+    `,
     )
     .run({
       id,
@@ -216,24 +207,26 @@ export function updateDepartment(input: UpdateDepartmentInput): MutationResult {
       parent_id: input.parent_id,
       sort_order: sortOrder,
       notes: input.notes.trim(),
-      active: input.active ? 1 : 0
-    })
+      active: input.active ? 1 : 0,
+    });
 
   if (result.changes === 0) {
-    throw new Error('الإدارة غير موجودة')
+    throw new Error('الإدارة غير موجودة');
   }
 
-  return { success: true }
+  return { success: true };
 }
 
-export function setDepartmentActive(input: SetDepartmentActiveInput): MutationResult {
-  const id = Number(input.id)
+export function setDepartmentActive(
+  input: SetDepartmentActiveInput,
+): MutationResult {
+  const id = Number(input.id);
 
   if (!id) {
-    throw new Error('الإدارة غير صحيحة')
+    throw new Error('الإدارة غير صحيحة');
   }
 
-  const db = getDb()
+  const db = getDb();
 
   const result = db
     .prepare(
@@ -243,28 +236,28 @@ export function setDepartmentActive(input: SetDepartmentActiveInput): MutationRe
         active = @active,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = @id
-    `
+    `,
     )
     .run({
       id,
-      active: input.active ? 1 : 0
-    })
+      active: input.active ? 1 : 0,
+    });
 
   if (result.changes === 0) {
-    throw new Error('الإدارة غير موجودة')
+    throw new Error('الإدارة غير موجودة');
   }
 
-  return { success: true }
+  return { success: true };
 }
 
 export function deleteDepartment(input: DeleteDepartmentInput): MutationResult {
-  const id = Number(input.id)
+  const id = Number(input.id);
 
   if (!id) {
-    throw new Error('الإدارة غير صحيحة')
+    throw new Error('الإدارة غير صحيحة');
   }
 
-  const db = getDb()
+  const db = getDb();
 
   const employeesCount = db
     .prepare(
@@ -272,12 +265,12 @@ export function deleteDepartment(input: DeleteDepartmentInput): MutationResult {
       SELECT COUNT(*) AS count
       FROM employees
       WHERE department_id = ?
-    `
+    `,
     )
-    .get(id) as { count: number }
+    .get(id) as { count: number };
 
   if (employeesCount.count > 0) {
-    throw new Error('لا يمكن حذف الإدارة لأنها مرتبطة بموظفين')
+    throw new Error('لا يمكن حذف الإدارة لأنها مرتبطة بموظفين');
   }
 
   const childrenCount = db
@@ -286,19 +279,19 @@ export function deleteDepartment(input: DeleteDepartmentInput): MutationResult {
       SELECT COUNT(*) AS count
       FROM departments
       WHERE parent_id = ?
-    `
+    `,
     )
-    .get(id) as { count: number }
+    .get(id) as { count: number };
 
   if (childrenCount.count > 0) {
-    throw new Error('لا يمكن حذف الإدارة لأنها تحتوي على إدارات تابعة')
+    throw new Error('لا يمكن حذف الإدارة لأنها تحتوي على إدارات تابعة');
   }
 
-  const result = db.prepare(`DELETE FROM departments WHERE id = ?`).run(id)
+  const result = db.prepare(`DELETE FROM departments WHERE id = ?`).run(id);
 
   if (result.changes === 0) {
-    throw new Error('الإدارة غير موجودة')
+    throw new Error('الإدارة غير موجودة');
   }
 
-  return { success: true }
+  return { success: true };
 }

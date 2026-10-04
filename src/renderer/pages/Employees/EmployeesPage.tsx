@@ -31,7 +31,9 @@ export default function EmployeesPage(): ReactElement {
     null,
   );
   const [showInactiveEmployees, setShowInactiveEmployees] = useState(false);
-
+  const [pinEmployeeHeader, setPinEmployeeHeader] = useState(() => {
+    return localStorage.getItem('pinEmployeeHeader') !== 'false';
+  });
   const employeeFormRef = useRef<HTMLElement | null>(null);
   const employeeNameInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -167,6 +169,10 @@ export default function EmployeesPage(): ReactElement {
     };
   }, [showInactiveEmployees]);
 
+  useEffect(() => {
+    localStorage.setItem('pinEmployeeHeader', String(pinEmployeeHeader));
+  }, [pinEmployeeHeader]);
+
   function resetEmployeeForm(): void {
     setEditingEmployeeId(null);
     setEmployeeName('');
@@ -255,7 +261,10 @@ export default function EmployeesPage(): ReactElement {
 
   return (
     <>
-      <section ref={employeeFormRef} className="card sticky-entry-card">
+      <section
+        ref={employeeFormRef}
+        className={`card ${pinEmployeeHeader ? 'sticky-entry-card' : ''}`}
+      >
         <h2>{editingEmployeeId ? 'تعديل بيانات الموظف' : 'إضافة موظف'}</h2>
 
         <div className="form-grid">
@@ -346,6 +355,14 @@ export default function EmployeesPage(): ReactElement {
               onChange={(event) => setEmployeeActive(event.target.checked)}
             />
             موظف نشط
+          </label>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={pinEmployeeHeader}
+              onChange={(event) => setPinEmployeeHeader(event.target.checked)}
+            />
+            تثبيت بيانات الموظف أعلى الشاشة
           </label>
         </div>
 

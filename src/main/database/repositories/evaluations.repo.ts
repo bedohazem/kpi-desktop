@@ -1,27 +1,29 @@
-import { getDb } from '../db'
-import type { MutationResult } from '../../types/common'
+import { getDb } from '../db';
+import type { MutationResult } from '../../types/common';
 import type {
   CopyPreviousMonthInput,
   CopyPreviousMonthResult,
   EvaluationEmployeeRow,
   EvaluationFilters,
-  SaveMonthlyEvaluationsInput
-} from '../../types/evaluations'
+  SaveMonthlyEvaluationsInput,
+} from '../../types/evaluations';
 
 function validateMonthYear(month: number, year: number): void {
   if (!Number.isInteger(month) || month < 1 || month > 12) {
-    throw new Error('الشهر غير صحيح')
+    throw new Error('الشهر غير صحيح');
   }
 
   if (!Number.isInteger(year) || year < 2000 || year > 2100) {
-    throw new Error('السنة غير صحيحة')
+    throw new Error('السنة غير صحيحة');
   }
 }
 
-export function listEvaluationEmployees(filters: EvaluationFilters): EvaluationEmployeeRow[] {
-  validateMonthYear(filters.month, filters.year)
+export function listEvaluationEmployees(
+  filters: EvaluationFilters,
+): EvaluationEmployeeRow[] {
+  validateMonthYear(filters.month, filters.year);
 
-  const db = getDb()
+  const db = getDb();
 
   return db
     .prepare(
@@ -66,23 +68,25 @@ export function listEvaluationEmployees(filters: EvaluationFilters): EvaluationE
         e.sort_order ASC,
         e.name COLLATE NOCASE ASC,
         e.id ASC
-    `
+    `,
     )
     .all({
       month: filters.month,
       year: filters.year,
-      department_id: filters.department_id
-    }) as EvaluationEmployeeRow[]
+      department_id: filters.department_id,
+    }) as EvaluationEmployeeRow[];
 }
 
-export function saveMonthlyEvaluations(input: SaveMonthlyEvaluationsInput): MutationResult {
-  validateMonthYear(input.month, input.year)
+export function saveMonthlyEvaluations(
+  input: SaveMonthlyEvaluationsInput,
+): MutationResult {
+  validateMonthYear(input.month, input.year);
 
   if (input.items.length === 0) {
-    throw new Error('لا توجد تقييمات للحفظ')
+    throw new Error('لا توجد تقييمات للحفظ');
   }
 
-  const db = getDb()
+  const db = getDb();
 
   const saveStatement = db.prepare(
     `
@@ -105,15 +109,15 @@ export function saveMonthlyEvaluations(input: SaveMonthlyEvaluationsInput): Muta
       evaluation_value = excluded.evaluation_value,
       notes = excluded.notes,
       updated_at = CURRENT_TIMESTAMP
-  `
-  )
+  `,
+  );
 
   const transaction = db.transaction(() => {
     for (const item of input.items) {
-      const evaluationValue = Number(item.evaluation_value)
+      const evaluationValue = Number(item.evaluation_value);
 
       if (!Number.isFinite(evaluationValue) || evaluationValue < 0) {
-        throw new Error('قيمة التقييم غير صحيحة')
+        throw new Error('قيمة التقييم غير صحيحة');
       }
 
       saveStatement.run({
@@ -121,23 +125,25 @@ export function saveMonthlyEvaluations(input: SaveMonthlyEvaluationsInput): Muta
         month: input.month,
         year: input.year,
         evaluation_value: evaluationValue,
-        notes: item.notes.trim()
-      })
+        notes: item.notes.trim(),
+      });
     }
-  })
+  });
 
-  transaction()
+  transaction();
 
-  return { success: true }
+  return { success: true };
 }
 
-export function copyPreviousMonthEvaluations(input: CopyPreviousMonthInput): CopyPreviousMonthResult {
-  validateMonthYear(input.month, input.year)
+export function copyPreviousMonthEvaluations(
+  input: CopyPreviousMonthInput,
+): CopyPreviousMonthResult {
+  validateMonthYear(input.month, input.year);
 
-  const previousMonth = input.month === 1 ? 12 : input.month - 1
-  const previousYear = input.month === 1 ? input.year - 1 : input.year
+  const previousMonth = input.month === 1 ? 12 : input.month - 1;
+  const previousYear = input.month === 1 ? input.year - 1 : input.year;
 
-  const db = getDb()
+  const db = getDb();
 
   const result = db
     .prepare(
@@ -178,18 +184,18 @@ export function copyPreviousMonthEvaluations(input: CopyPreviousMonthInput): Cop
           )
         )
       ON CONFLICT(employee_id, month, year) DO NOTHING
-    `
+    `,
     )
     .run({
       month: input.month,
       year: input.year,
       previousMonth,
       previousYear,
-      department_id: input.department_id
-    })
+      department_id: input.department_id,
+    });
 
   return {
     success: true,
-    copied: result.changes
-  }
+    copied: result.changes,
+  };
 }

@@ -1,42 +1,42 @@
 export type EmployeeRow = {
-  id: number
-  name: string
-  national_id: string | null
-  qualification: string | null
-  job_title: string | null
-  department_id: number | null
-  sort_order: number
-  department_name: string | null
-  notes: string | null
-  active: number
-  created_at: string
-  updated_at: string
-}
+  id: number;
+  name: string;
+  national_id: string | null;
+  qualification: string | null;
+  job_title: string | null;
+  department_id: number | null;
+  sort_order: number;
+  department_name: string | null;
+  notes: string | null;
+  active: number;
+  created_at: string;
+  updated_at: string;
+};
 
 export type CreateEmployeeInput = {
-  name: string
-  national_id: string
-  qualification: string
-  job_title: string
-  department_id: number | null
-  sort_order: number
-  notes: string
-  active: boolean
-}
+  name: string;
+  national_id: string;
+  qualification: string;
+  job_title: string;
+  department_id: number | null;
+  sort_order: number;
+  notes: string;
+  active: boolean;
+};
 
 export type UpdateEmployeeInput = CreateEmployeeInput & {
-  id: number
-}
+  id: number;
+};
 
 export type SetEmployeeActiveInput = {
-  id: number
-  active: boolean
-}
+  id: number;
+  active: boolean;
+};
 
 export type ListEmployeesInput = {
-  includeInactive?: boolean
-}
+  includeInactive?: boolean;
+};
 
 export type DeleteEmployeeInput = {
-  id: number
-}
+  id: number;
+};

@@ -1,51 +1,51 @@
-import { getDb } from '../db'
-import type { DashboardStats } from '../../types/dashboard'
+import { getDb } from '../db';
+import type { DashboardStats } from '../../types/dashboard';
 
 type CountRow = {
-  count: number
-}
+  count: number;
+};
 
 type EvaluationAggregateRow = {
-  count: number
-  total: number | null
-  average: number | null
-}
+  count: number;
+  total: number | null;
+  average: number | null;
+};
 
 function getCount(sql: string): number {
-  const db = getDb()
-  const row = db.prepare(sql).get() as CountRow
-  return Number(row.count || 0)
+  const db = getDb();
+  const row = db.prepare(sql).get() as CountRow;
+  return Number(row.count || 0);
 }
 
 export function getDashboardStats(): DashboardStats {
-  const db = getDb()
-  const now = new Date()
-  const currentMonth = now.getMonth() + 1
-  const currentYear = now.getFullYear()
+  const db = getDb();
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
 
   const activeDepartmentsCount = getCount(`
     SELECT COUNT(*) AS count
     FROM departments
     WHERE active = 1
-  `)
+  `);
 
   const inactiveDepartmentsCount = getCount(`
     SELECT COUNT(*) AS count
     FROM departments
     WHERE active = 0
-  `)
+  `);
 
   const activeEmployeesCount = getCount(`
     SELECT COUNT(*) AS count
     FROM employees
     WHERE active = 1
-  `)
+  `);
 
   const inactiveEmployeesCount = getCount(`
     SELECT COUNT(*) AS count
     FROM employees
     WHERE active = 0
-  `)
+  `);
 
   const evaluationAggregate = db
     .prepare(
@@ -59,12 +59,12 @@ export function getDashboardStats(): DashboardStats {
       WHERE e.active = 1
         AND me.month = @month
         AND me.year = @year
-    `
+    `,
     )
     .get({
       month: currentMonth,
-      year: currentYear
-    }) as EvaluationAggregateRow
+      year: currentYear,
+    }) as EvaluationAggregateRow;
 
   const missingEvaluations = db
     .prepare(
@@ -79,12 +79,12 @@ export function getDashboardStats(): DashboardStats {
             AND me.month = @month
             AND me.year = @year
         )
-    `
+    `,
     )
     .get({
       month: currentMonth,
-      year: currentYear
-    }) as CountRow
+      year: currentYear,
+    }) as CountRow;
 
   return {
     currentMonth,
@@ -96,6 +96,6 @@ export function getDashboardStats(): DashboardStats {
     currentMonthEvaluationsCount: Number(evaluationAggregate.count || 0),
     currentMonthMissingEvaluationsCount: Number(missingEvaluations.count || 0),
     currentMonthTotal: Number(evaluationAggregate.total || 0),
-    currentMonthAverage: Number(evaluationAggregate.average || 0)
-  }
+    currentMonthAverage: Number(evaluationAggregate.average || 0),
+  };
 }

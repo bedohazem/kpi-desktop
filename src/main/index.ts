@@ -1,31 +1,31 @@
-import { app, BrowserWindow, ipcMain, Menu, shell } from 'electron'
-import path from 'node:path'
-import { getDb, initDb } from './database/db'
-import { registerDepartmentsIpc } from './ipc/departments.ipc'
-import { registerEmployeesIpc } from './ipc/employees.ipc'
-import { registerEvaluationsIpc } from './ipc/evaluations.ipc'
-import { registerReportsIpc } from './ipc/reports.ipc'
-import { registerDashboardIpc } from './ipc/dashboard.ipc'
-import { registerBackupIpc } from './ipc/backup.ipc'
+import { app, BrowserWindow, ipcMain, Menu, shell } from 'electron';
+import path from 'node:path';
+import { getDb, initDb } from './database/db';
+import { registerDepartmentsIpc } from './ipc/departments.ipc';
+import { registerEmployeesIpc } from './ipc/employees.ipc';
+import { registerEvaluationsIpc } from './ipc/evaluations.ipc';
+import { registerReportsIpc } from './ipc/reports.ipc';
+import { registerDashboardIpc } from './ipc/dashboard.ipc';
+import { registerBackupIpc } from './ipc/backup.ipc';
 import {
   applyPendingRestore,
-  runAutomaticBackup
-} from './services/backup.service'
+  runAutomaticBackup,
+} from './services/backup.service';
 
 type DbTestResult = {
-  ok: boolean
-  dbPath: string
-  departmentsCount: number
-}
+  ok: boolean;
+  dbPath: string;
+  departmentsCount: number;
+};
 
-let mainWindow: BrowserWindow | null = null
+let mainWindow: BrowserWindow | null = null;
 
-const appRoot = app.isPackaged ? app.getAppPath() : process.cwd()
+const appRoot = app.isPackaged ? app.getAppPath() : process.cwd();
 
-Menu.setApplicationMenu(null)
+Menu.setApplicationMenu(null);
 
 function createWindow(): void {
-  const preloadPath = path.join(appRoot, 'preload.cjs')
+  const preloadPath = path.join(appRoot, 'preload.cjs');
 
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -38,91 +38,86 @@ function createWindow(): void {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: preloadPath
-    }
-  })
+      preload: preloadPath,
+    },
+  });
 
-  mainWindow.setMenu(null)
-  mainWindow.setMenuBarVisibility(false)
+  mainWindow.setMenu(null);
+  mainWindow.setMenuBarVisibility(false);
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow?.maximize()
-    mainWindow?.show()
-  })
+    mainWindow?.maximize();
+    mainWindow?.show();
+  });
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
-    return { action: 'deny' }
-  })
+    shell.openExternal(details.url);
+    return { action: 'deny' };
+  });
 
   if (!app.isPackaged) {
-    void mainWindow.loadURL('http://localhost:3000')
+    void mainWindow.loadURL('http://localhost:3000');
   } else {
-    void mainWindow.loadFile(path.join(appRoot, 'dist', 'renderer', 'index.html'))
+    void mainWindow.loadFile(
+      path.join(appRoot, 'dist', 'renderer', 'index.html'),
+    );
   }
 
   mainWindow.on('closed', () => {
-    mainWindow = null
-  })
+    mainWindow = null;
+  });
 }
 
 app.whenReady().then(() => {
   try {
-    const restoreApplied = applyPendingRestore()
+    const restoreApplied = applyPendingRestore();
 
     if (restoreApplied) {
-      console.log(
-        'Pending database restore applied successfully'
-      )
+      console.log('Pending database restore applied successfully');
     }
   } catch (error) {
-    console.error(
-      'Failed to apply pending database restore:',
-      error
-    )
+    console.error('Failed to apply pending database restore:', error);
   }
 
-  const dbPath = initDb()
-
+  const dbPath = initDb();
 
   ipcMain.handle('db:test', (): DbTestResult => {
-    const db = getDb()
-    const row = db.prepare('SELECT COUNT(*) as count FROM departments').get() as {
-      count: number
-    }
+    const db = getDb();
+    const row = db
+      .prepare('SELECT COUNT(*) as count FROM departments')
+      .get() as {
+      count: number;
+    };
 
     return {
       ok: true,
       dbPath,
-      departmentsCount: row.count
-    }
-  })
+      departmentsCount: row.count,
+    };
+  });
 
-  registerDepartmentsIpc()
-  registerEmployeesIpc()
-  registerEvaluationsIpc()
-  registerReportsIpc()
-  registerDashboardIpc()
-  registerBackupIpc()
+  registerDepartmentsIpc();
+  registerEmployeesIpc();
+  registerEvaluationsIpc();
+  registerReportsIpc();
+  registerDashboardIpc();
+  registerBackupIpc();
 
   void runAutomaticBackup().catch((error) => {
-    console.error(
-      'Automatic backup failed:',
-      error
-    )
-  })
+    console.error('Automatic backup failed:', error);
+  });
 
-  createWindow()
+  createWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
+      createWindow();
     }
-  })
-})
+  });
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    app.quit()
+    app.quit();
   }
-})
+});

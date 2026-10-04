@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useState, type ReactElement } from "react";
-import type { Department, Employee, ReportsResult } from "../../types/api";
-import * as XLSX from "xlsx";
-import { toast } from "../../utils/toast";
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
+import type { Department, Employee, ReportsResult } from '../../types/api';
+import * as XLSX from 'xlsx';
+import { toast } from '../../utils/toast';
 import {
   flattenDepartmentTree,
   getDepartmentAndDescendantIds,
   sortDepartmentSummaryByTree,
   sortEmployeesByDepartmentTree,
-} from "../../utils/departments-tree";
+} from '../../utils/departments-tree';
 
 const currentYear = new Date().getFullYear();
 
@@ -16,10 +16,10 @@ export default function ReportsPage(): ReactElement {
   const [employees, setEmployees] = useState<Employee[]>([]);
 
   const [year, setYear] = useState(String(currentYear));
-  const [fromMonth, setFromMonth] = useState("1");
-  const [toMonth, setToMonth] = useState("12");
-  const [departmentId, setDepartmentId] = useState("");
-  const [employeeId, setEmployeeId] = useState("");
+  const [fromMonth, setFromMonth] = useState('1');
+  const [toMonth, setToMonth] = useState('12');
+  const [departmentId, setDepartmentId] = useState('');
+  const [employeeId, setEmployeeId] = useState('');
 
   const [report, setReport] = useState<ReportsResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -60,7 +60,7 @@ export default function ReportsPage(): ReactElement {
   }, [report, departments]);
 
   function getEmployeeDifference(
-    employee: ReportsResult["employees"][number],
+    employee: ReportsResult['employees'][number],
   ): number | null {
     if (!report || report.months.length < 2) {
       return null;
@@ -72,7 +72,7 @@ export default function ReportsPage(): ReactElement {
     const firstValue = employee.month_values[String(firstMonth)];
     const lastValue = employee.month_values[String(lastMonth)];
 
-    if (typeof firstValue !== "number" || typeof lastValue !== "number") {
+    if (typeof firstValue !== 'number' || typeof lastValue !== 'number') {
       return null;
     }
 
@@ -81,7 +81,7 @@ export default function ReportsPage(): ReactElement {
 
   function formatDifference(value: number | null): string {
     if (value === null) {
-      return "-";
+      return '-';
     }
 
     const formatted = Number(value.toFixed(2));
@@ -108,7 +108,7 @@ export default function ReportsPage(): ReactElement {
       monthTotals[String(reportMonth)] = orderedReportEmployees.reduce(
         (sum, employee) => {
           const value = employee.month_values[String(reportMonth)];
-          return sum + (typeof value === "number" ? value : 0);
+          return sum + (typeof value === 'number' ? value : 0);
         },
         0,
       );
@@ -145,7 +145,7 @@ export default function ReportsPage(): ReactElement {
   }, [report, departments]);
 
   async function generateReport(): Promise<void> {
-    toast.info("جاري انشاء تقرير ...");
+    toast.info('جاري انشاء تقرير ...');
 
     try {
       setIsLoading(true);
@@ -159,10 +159,10 @@ export default function ReportsPage(): ReactElement {
       });
 
       setReport(result);
-      toast.success("تم إنشاء التقرير");
+      toast.success('تم إنشاء التقرير');
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "حدث خطأ أثناء إنشاء التقرير";
+        error instanceof Error ? error.message : 'حدث خطأ أثناء إنشاء التقرير';
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -181,7 +181,7 @@ export default function ReportsPage(): ReactElement {
       })
       .catch(() => {
         if (isMounted) {
-          toast.error("حدث خطأ أثناء تحميل بيانات التقرير");
+          toast.error('حدث خطأ أثناء تحميل بيانات التقرير');
         }
       });
 
@@ -192,40 +192,40 @@ export default function ReportsPage(): ReactElement {
 
   function exportReportToExcel(): void {
     if (!report) {
-      toast.warning("اعرض التقرير الأول قبل التصدير");
+      toast.warning('اعرض التقرير الأول قبل التصدير');
       return;
     }
 
     const employeeRows = orderedReportEmployees.map((employee, index) => {
       const row: Record<string, string | number> = {
         م: index + 1,
-        "اسم الموظف": employee.employee_name,
-        المؤهل: employee.qualification || "",
-        الإدارة: employee.department_name || "",
-        الوظيفة: employee.job_title || "",
+        'اسم الموظف': employee.employee_name,
+        المؤهل: employee.qualification || '',
+        الإدارة: employee.department_name || '',
+        الوظيفة: employee.job_title || '',
       };
 
       for (const reportMonth of report.months) {
         const value = employee.month_values[String(reportMonth)];
-        row[`شهر ${reportMonth}`] = value === null ? "" : value;
+        row[`شهر ${reportMonth}`] = value === null ? '' : value;
       }
 
       const difference = getEmployeeDifference(employee);
 
-      row["الإجمالي"] = Number(employee.total.toFixed(2));
-      row["الفرق"] = difference === null ? "" : Number(difference.toFixed(2));
-      row["ملاحظات"] = employee.notes || "";
+      row['الإجمالي'] = Number(employee.total.toFixed(2));
+      row['الفرق'] = difference === null ? '' : Number(difference.toFixed(2));
+      row['ملاحظات'] = employee.notes || '';
 
       return row;
     });
 
     if (employeeRows.length > 0) {
       const totalExcelRow: Record<string, string | number> = {
-        م: "",
-        "اسم الموظف": "الإجمالي",
-        المؤهل: "",
-        الإدارة: "",
-        الوظيفة: "",
+        م: '',
+        'اسم الموظف': 'الإجمالي',
+        المؤهل: '',
+        الإدارة: '',
+        الوظيفة: '',
       };
 
       for (const reportMonth of report.months) {
@@ -234,21 +234,21 @@ export default function ReportsPage(): ReactElement {
         );
       }
 
-      totalExcelRow["الإجمالي"] = Number(reportTotals.grandTotal.toFixed(2));
+      totalExcelRow['الإجمالي'] = Number(reportTotals.grandTotal.toFixed(2));
 
-      totalExcelRow["الفرق"] =
+      totalExcelRow['الفرق'] =
         reportTotals.overallDifference === null
-          ? ""
+          ? ''
           : Number(reportTotals.overallDifference.toFixed(2));
-      totalExcelRow["ملاحظات"] = "";
+      totalExcelRow['ملاحظات'] = '';
 
       employeeRows.push(totalExcelRow);
     }
 
     const departmentRows = orderedDepartmentSummary.map((department) => ({
       الإدارة: department.department_name,
-      "عدد الموظفين": department.employees_count,
-      "عدد التقييمات": department.evaluations_count,
+      'عدد الموظفين': department.employees_count,
+      'عدد التقييمات': department.evaluations_count,
       الإجمالي: Number(department.total.toFixed(2)),
       المتوسط: Number(department.average.toFixed(2)),
     }));
@@ -258,8 +258,8 @@ export default function ReportsPage(): ReactElement {
     const employeesSheet = XLSX.utils.json_to_sheet(employeeRows);
     const departmentsSheet = XLSX.utils.json_to_sheet(departmentRows);
 
-    XLSX.utils.book_append_sheet(workbook, employeesSheet, "تقرير الموظفين");
-    XLSX.utils.book_append_sheet(workbook, departmentsSheet, "ملخص الإدارات");
+    XLSX.utils.book_append_sheet(workbook, employeesSheet, 'تقرير الموظفين');
+    XLSX.utils.book_append_sheet(workbook, departmentsSheet, 'ملخص الإدارات');
 
     const fileName = `KPI_Report_${year}_${fromMonth}_to_${toMonth}.xlsx`;
 
@@ -267,45 +267,45 @@ export default function ReportsPage(): ReactElement {
   }
 
   function escapeHtml(value: string | number | null | undefined): string {
-    return String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
   }
 
   function formatNumber(value: number | null): string {
     if (value === null) {
-      return "-";
+      return '-';
     }
 
     return Number(value)
       .toFixed(2)
-      .replace(/\\.00$/, "");
+      .replace(/\\.00$/, '');
   }
 
   function buildReportPdfHtml(): string {
     if (!report) {
-      return "";
+      return '';
     }
 
     const monthHeaders = report.months
       .map((monthNumber) => `<th>شهر<br>${monthNumber}</th>`)
-      .join("");
+      .join('');
 
     const monthColumns = report.months
       .map(() => '<col style="width: 4.2%" />')
-      .join("");
+      .join('');
 
     const employeeRows = orderedReportEmployees
       .map((employee, index) => {
         const monthCells = report.months
           .map((monthNumber) => {
             const value = employee.month_values[String(monthNumber)];
-            return `<td>${value === null ? "-" : formatNumber(value)}</td>`;
+            return `<td>${value === null ? '-' : formatNumber(value)}</td>`;
           })
-          .join("");
+          .join('');
 
         const difference = getEmployeeDifference(employee);
 
@@ -313,17 +313,17 @@ export default function ReportsPage(): ReactElement {
         <tr>
           <td>${index + 1}</td>
           <td class="text-cell">${escapeHtml(employee.employee_name)}</td>
-          <td class="text-cell">${escapeHtml(employee.qualification || "-")}</td>
-          <td class="text-cell">${escapeHtml(employee.department_name || "-")}</td>
-          <td class="text-cell">${escapeHtml(employee.job_title || "-")}</td>
+          <td class="text-cell">${escapeHtml(employee.qualification || '-')}</td>
+          <td class="text-cell">${escapeHtml(employee.department_name || '-')}</td>
+          <td class="text-cell">${escapeHtml(employee.job_title || '-')}</td>
           ${monthCells}
           <td>${formatNumber(employee.total)}</td>
           <td>${formatDifference(difference)}</td>
-          <td class="text-cell multiline-notes">${escapeHtml(employee.notes || "-")}</td>
+          <td class="text-cell multiline-notes">${escapeHtml(employee.notes || '-')}</td>
         </tr>
       `;
       })
-      .join("");
+      .join('');
 
     const totalRow =
       orderedReportEmployees.length > 0
@@ -338,14 +338,14 @@ export default function ReportsPage(): ReactElement {
                   reportTotals.monthTotals[String(reportMonth)],
                 )}</td>`,
             )
-            .join("")}
+            .join('')}
 
           <td>${formatNumber(reportTotals.grandTotal)}</td>
           <td>${formatDifference(reportTotals.overallDifference)}</td>
           <td>-</td>
         </tr>
       `
-        : "";
+        : '';
 
     const summaryRows = orderedDepartmentSummary
       .map(
@@ -359,7 +359,7 @@ export default function ReportsPage(): ReactElement {
         </tr>
       `,
       )
-      .join("");
+      .join('');
 
     return `
     <!doctype html>
@@ -469,7 +469,7 @@ export default function ReportsPage(): ReactElement {
           <div class="meta">
             السنة: ${escapeHtml(year)}<br />
             من شهر: ${escapeHtml(fromMonth)} إلى شهر: ${escapeHtml(toMonth)}<br />
-            تاريخ الطباعة: ${new Date().toLocaleDateString("ar-EG")}
+            تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}
           </div>
         </div>
 
@@ -535,7 +535,7 @@ export default function ReportsPage(): ReactElement {
 
   async function exportReportToPdf(): Promise<void> {
     if (!report) {
-      toast.info("اعرض التقرير الأول قبل حفظ PDF");
+      toast.info('اعرض التقرير الأول قبل حفظ PDF');
       return;
     }
 
@@ -546,14 +546,14 @@ export default function ReportsPage(): ReactElement {
       });
 
       if (result.canceled) {
-        toast.info("تم إلغاء حفظ PDF");
+        toast.info('تم إلغاء حفظ PDF');
         return;
       }
 
-      toast.success("تم حفظ ملف PDF بنجاح");
+      toast.success('تم حفظ ملف PDF بنجاح');
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "حدث خطأ أثناء حفظ PDF";
+        error instanceof Error ? error.message : 'حدث خطأ أثناء حفظ PDF';
       toast.error(errorMessage);
     }
   }
@@ -569,7 +569,7 @@ export default function ReportsPage(): ReactElement {
             <input
               value={year}
               onChange={(event) =>
-                setYear(event.target.value.replace(/\D/g, ""))
+                setYear(event.target.value.replace(/\D/g, ''))
               }
             />
           </label>
@@ -612,13 +612,13 @@ export default function ReportsPage(): ReactElement {
               value={departmentId}
               onChange={(event) => {
                 setDepartmentId(event.target.value);
-                setEmployeeId("");
+                setEmployeeId('');
               }}
             >
               <option value="">كل الإدارات</option>
               {departmentOptions.map((department) => (
                 <option key={department.id} value={department.id}>
-                  {"— ".repeat(department.level)}
+                  {'— '.repeat(department.level)}
                   {department.name}
                 </option>
               ))}
@@ -647,7 +647,7 @@ export default function ReportsPage(): ReactElement {
             disabled={isLoading}
             onClick={generateReport}
           >
-            {isLoading ? "جاري إنشاء التقرير..." : "عرض التقرير"}
+            {isLoading ? 'جاري إنشاء التقرير...' : 'عرض التقرير'}
           </button>
 
           <button
@@ -702,18 +702,18 @@ export default function ReportsPage(): ReactElement {
               <table
                 className={`report-employees-table ${
                   report.months.length <= 3
-                    ? "report-table-large"
+                    ? 'report-table-large'
                     : report.months.length <= 7
-                      ? "report-table-medium"
-                      : "report-table-compact"
+                      ? 'report-table-medium'
+                      : 'report-table-compact'
                 }`}
               >
                 <colgroup>
-                  <col style={{ width: "2.5%" }} />
-                  <col style={{ width: "11%" }} />
-                  <col style={{ width: "7%" }} />
-                  <col style={{ width: "8%" }} />
-                  <col style={{ width: "9%" }} />
+                  <col style={{ width: '2.5%' }} />
+                  <col style={{ width: '11%' }} />
+                  <col style={{ width: '7%' }} />
+                  <col style={{ width: '8%' }} />
+                  <col style={{ width: '9%' }} />
 
                   {report.months.map((month) => (
                     <col
@@ -724,9 +724,9 @@ export default function ReportsPage(): ReactElement {
                     />
                   ))}
 
-                  <col style={{ width: "5%" }} />
-                  <col style={{ width: "5%" }} />
-                  <col style={{ width: "12.5%" }} />
+                  <col style={{ width: '5%' }} />
+                  <col style={{ width: '5%' }} />
+                  <col style={{ width: '12.5%' }} />
                 </colgroup>
                 <thead>
                   <tr>
@@ -756,14 +756,14 @@ export default function ReportsPage(): ReactElement {
                       <tr key={employee.employee_id}>
                         <td>{index + 1}</td>
                         <td>{employee.employee_name}</td>
-                        <td>{employee.qualification || "-"}</td>
-                        <td>{employee.department_name || "-"}</td>
-                        <td>{employee.job_title || "-"}</td>
+                        <td>{employee.qualification || '-'}</td>
+                        <td>{employee.department_name || '-'}</td>
+                        <td>{employee.job_title || '-'}</td>
 
                         {report.months.map((month) => (
                           <td key={month}>
                             {employee.month_values[String(month)] === null
-                              ? "-"
+                              ? '-'
                               : employee.month_values[String(month)]}
                           </td>
                         ))}
@@ -773,7 +773,7 @@ export default function ReportsPage(): ReactElement {
                           {formatDifference(getEmployeeDifference(employee))}
                         </td>
                         <td className="multiline-notes">
-                          {employee.notes || "-"}
+                          {employee.notes || '-'}
                         </td>
                       </tr>
                     ))

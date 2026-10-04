@@ -1,6 +1,6 @@
-import { NavLink, Outlet } from 'react-router-dom'
-import type { ReactElement } from 'react'
-import ToastContainer from '../ui/ToastContainer'
+import { NavLink, Outlet } from 'react-router-dom';
+import type { ReactElement } from 'react';
+import ToastContainer from '../ui/ToastContainer';
 
 export default function AppShell(): ReactElement {
   return (
@@ -11,17 +11,13 @@ export default function AppShell(): ReactElement {
         <header className="app-header">
           <div>
             <h1>برنامج التقييمات الشهرية</h1>
-            <p>
-              إدارة الإدارات والموظفين والتقييمات الشهرية
-            </p>
+            <p>إدارة الإدارات والموظفين والتقييمات الشهرية</p>
           </div>
         </header>
 
         <nav className="tabs">
           <NavLink
-            className={({ isActive }) =>
-              isActive ? 'tab active' : 'tab'
-            }
+            className={({ isActive }) => (isActive ? 'tab active' : 'tab')}
             to="/"
             end
           >
@@ -29,45 +25,35 @@ export default function AppShell(): ReactElement {
           </NavLink>
 
           <NavLink
-            className={({ isActive }) =>
-              isActive ? 'tab active' : 'tab'
-            }
+            className={({ isActive }) => (isActive ? 'tab active' : 'tab')}
             to="/departments"
           >
             الإدارات
           </NavLink>
 
           <NavLink
-            className={({ isActive }) =>
-              isActive ? 'tab active' : 'tab'
-            }
+            className={({ isActive }) => (isActive ? 'tab active' : 'tab')}
             to="/employees"
           >
             الموظفين
           </NavLink>
 
           <NavLink
-            className={({ isActive }) =>
-              isActive ? 'tab active' : 'tab'
-            }
+            className={({ isActive }) => (isActive ? 'tab active' : 'tab')}
             to="/evaluations"
           >
             التقييمات الشهرية
           </NavLink>
 
           <NavLink
-            className={({ isActive }) =>
-              isActive ? 'tab active' : 'tab'
-            }
+            className={({ isActive }) => (isActive ? 'tab active' : 'tab')}
             to="/reports"
           >
             التقارير
           </NavLink>
 
           <NavLink
-            className={({ isActive }) =>
-              isActive ? 'tab active' : 'tab'
-            }
+            className={({ isActive }) => (isActive ? 'tab active' : 'tab')}
             to="/backup"
           >
             النسخ الاحتياطي
@@ -79,5 +65,5 @@ export default function AppShell(): ReactElement {
         <Outlet />
       </main>
     </div>
-  )
+  );
 }

@@ -1,11 +1,11 @@
-import { createHashRouter } from 'react-router-dom'
-import AppShell from './components/layout/AppShell'
-import DashboardPage from './pages/Dashboard/DashboardPage'
-import DepartmentsPage from './pages/Departments/DepartmentsPage'
-import EmployeesPage from './pages/Employees/EmployeesPage'
-import EvaluationsPage from './pages/Evaluations/EvaluationsPage'
-import ReportsPage from './pages/Reports/ReportsPage'
-import BackupPage from './pages/Backup/BackupPage'
+import { createHashRouter } from 'react-router-dom';
+import AppShell from './components/layout/AppShell';
+import DashboardPage from './pages/Dashboard/DashboardPage';
+import DepartmentsPage from './pages/Departments/DepartmentsPage';
+import EmployeesPage from './pages/Employees/EmployeesPage';
+import EvaluationsPage from './pages/Evaluations/EvaluationsPage';
+import ReportsPage from './pages/Reports/ReportsPage';
+import BackupPage from './pages/Backup/BackupPage';
 
 export const router = createHashRouter([
   {
@@ -14,28 +14,28 @@ export const router = createHashRouter([
     children: [
       {
         index: true,
-        element: <DashboardPage />
+        element: <DashboardPage />,
       },
       {
         path: 'departments',
-        element: <DepartmentsPage />
+        element: <DepartmentsPage />,
       },
       {
         path: 'employees',
-        element: <EmployeesPage />
+        element: <EmployeesPage />,
       },
       {
         path: 'evaluations',
-        element: <EvaluationsPage />
+        element: <EvaluationsPage />,
       },
       {
         path: 'reports',
-        element: <ReportsPage />
+        element: <ReportsPage />,
       },
       {
         path: 'backup',
-        element: <BackupPage />
-      }
-    ]
-  }
-])
+        element: <BackupPage />,
+      },
+    ],
+  },
+]);

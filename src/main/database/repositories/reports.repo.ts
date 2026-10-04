@@ -1,63 +1,75 @@
-import { getDb } from '../db'
+import { getDb } from '../db';
 import type {
   DepartmentSummaryRow,
   EmployeeReportRow,
   ReportFilters,
-  ReportsResult
-} from '../../types/reports'
+  ReportsResult,
+} from '../../types/reports';
 
 type EmployeeBaseRow = {
-  employee_id: number
-  employee_name: string
-  qualification: string | null
-  job_title: string | null
-  department_id: number | null
-  sort_order: number
-  department_name: string | null
-  notes: string | null
-}
+  employee_id: number;
+  employee_name: string;
+  qualification: string | null;
+  job_title: string | null;
+  department_id: number | null;
+  sort_order: number;
+  department_name: string | null;
+  notes: string | null;
+};
 
 type EvaluationValueRow = {
-  employee_id: number
-  month: number
-  evaluation_value: number
-}
+  employee_id: number;
+  month: number;
+  evaluation_value: number;
+};
 
 type DepartmentAggregateRow = {
-  department_id: number | null
-  department_name: string | null
-  employees_count: number
-  evaluations_count: number
-  total: number | null
-  average: number | null
-}
+  department_id: number | null;
+  department_name: string | null;
+  employees_count: number;
+  evaluations_count: number;
+  total: number | null;
+  average: number | null;
+};
 
 function validateReportFilters(filters: ReportFilters): void {
-  if (!Number.isInteger(filters.year) || filters.year < 2000 || filters.year > 2100) {
-    throw new Error('السنة غير صحيحة')
+  if (
+    !Number.isInteger(filters.year) ||
+    filters.year < 2000 ||
+    filters.year > 2100
+  ) {
+    throw new Error('السنة غير صحيحة');
   }
 
-  if (!Number.isInteger(filters.from_month) || filters.from_month < 1 || filters.from_month > 12) {
-    throw new Error('شهر البداية غير صحيح')
+  if (
+    !Number.isInteger(filters.from_month) ||
+    filters.from_month < 1 ||
+    filters.from_month > 12
+  ) {
+    throw new Error('شهر البداية غير صحيح');
   }
 
-  if (!Number.isInteger(filters.to_month) || filters.to_month < 1 || filters.to_month > 12) {
-    throw new Error('شهر النهاية غير صحيح')
+  if (
+    !Number.isInteger(filters.to_month) ||
+    filters.to_month < 1 ||
+    filters.to_month > 12
+  ) {
+    throw new Error('شهر النهاية غير صحيح');
   }
 
   if (filters.from_month > filters.to_month) {
-    throw new Error('شهر البداية لازم يكون قبل شهر النهاية')
+    throw new Error('شهر البداية لازم يكون قبل شهر النهاية');
   }
 }
 
 export function generateReports(filters: ReportFilters): ReportsResult {
-  validateReportFilters(filters)
+  validateReportFilters(filters);
 
-  const db = getDb()
+  const db = getDb();
   const months = Array.from(
     { length: filters.to_month - filters.from_month + 1 },
-    (_, index) => filters.from_month + index
-  )
+    (_, index) => filters.from_month + index,
+  );
 
   const employees = db
     .prepare(
@@ -102,15 +114,15 @@ export function generateReports(filters: ReportFilters): ReportsResult {
         )
         AND (@employee_id IS NULL OR e.id = @employee_id)
       ORDER BY e.id ASC
-    `
+    `,
     )
     .all({
       year: filters.year,
       from_month: filters.from_month,
       to_month: filters.to_month,
       department_id: filters.department_id,
-      employee_id: filters.employee_id
-    }) as EmployeeBaseRow[]
+      employee_id: filters.employee_id,
+    }) as EmployeeBaseRow[];
 
   const evaluations = db
     .prepare(
@@ -142,49 +154,53 @@ export function generateReports(filters: ReportFilters): ReportsResult {
         )
         AND (@employee_id IS NULL OR e.id = @employee_id)
       ORDER BY me.employee_id, me.month
-    `
+    `,
     )
     .all({
       year: filters.year,
       from_month: filters.from_month,
       to_month: filters.to_month,
       department_id: filters.department_id,
-      employee_id: filters.employee_id
-    }) as EvaluationValueRow[]
+      employee_id: filters.employee_id,
+    }) as EvaluationValueRow[];
 
-  const valuesByEmployee = new Map<number, EvaluationValueRow[]>()
+  const valuesByEmployee = new Map<number, EvaluationValueRow[]>();
 
   for (const evaluation of evaluations) {
-    const current = valuesByEmployee.get(evaluation.employee_id) || []
-    current.push(evaluation)
-    valuesByEmployee.set(evaluation.employee_id, current)
+    const current = valuesByEmployee.get(evaluation.employee_id) || [];
+    current.push(evaluation);
+    valuesByEmployee.set(evaluation.employee_id, current);
   }
 
   const employeeRows: EmployeeReportRow[] = employees.map((employee) => {
-    const employeeEvaluations = valuesByEmployee.get(employee.employee_id) || []
-    const monthValues: Record<string, number | null> = {}
+    const employeeEvaluations =
+      valuesByEmployee.get(employee.employee_id) || [];
+    const monthValues: Record<string, number | null> = {};
 
     for (const month of months) {
-      const found = employeeEvaluations.find((evaluation) => evaluation.month === month)
-      monthValues[String(month)] = found ? Number(found.evaluation_value) : null
+      const found = employeeEvaluations.find(
+        (evaluation) => evaluation.month === month,
+      );
+      monthValues[String(month)] = found
+        ? Number(found.evaluation_value)
+        : null;
     }
 
     const numericValues = Object.values(monthValues).filter(
-      (value): value is number => typeof value === 'number'
-    )
+      (value): value is number => typeof value === 'number',
+    );
 
-    const total = numericValues.reduce((sum, value) => sum + value, 0)
-    const average = numericValues.length > 0 ? total / numericValues.length : 0
-
+    const total = numericValues.reduce((sum, value) => sum + value, 0);
+    const average = numericValues.length > 0 ? total / numericValues.length : 0;
 
     return {
       ...employee,
       month_values: monthValues,
       total,
       average,
-      notes: employee.notes?.trim() || ''
-    }
-  })
+      notes: employee.notes?.trim() || '',
+    };
+  });
 
   const summaryRows = db
     .prepare(
@@ -232,15 +248,15 @@ export function generateReports(filters: ReportFilters): ReportsResult {
         AND (@employee_id IS NULL OR e.id = @employee_id)
       GROUP BY e.department_id, d.name
       ORDER BY d.name
-    `
+    `,
     )
     .all({
       year: filters.year,
       from_month: filters.from_month,
       to_month: filters.to_month,
       department_id: filters.department_id,
-      employee_id: filters.employee_id
-    }) as DepartmentAggregateRow[]
+      employee_id: filters.employee_id,
+    }) as DepartmentAggregateRow[];
 
   const departmentSummary: DepartmentSummaryRow[] = summaryRows.map((row) => ({
     department_id: row.department_id,
@@ -248,12 +264,12 @@ export function generateReports(filters: ReportFilters): ReportsResult {
     employees_count: Number(row.employees_count || 0),
     evaluations_count: Number(row.evaluations_count || 0),
     total: Number(row.total || 0),
-    average: Number(row.average || 0)
-  }))
+    average: Number(row.average || 0),
+  }));
 
   return {
     months,
     employees: employeeRows,
-    departmentSummary
-  }
+    departmentSummary,
+  };
 }

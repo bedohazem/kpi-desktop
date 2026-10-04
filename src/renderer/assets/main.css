@@ -1,4 +1,4 @@
-@import "./base.css";
+@import './base.css';
 
 * {
   box-sizing: border-box;
@@ -666,7 +666,7 @@ th {
 
 /* منع ظهور محتوى الجدول خلف الكارت بشكل مزعج */
 .sticky-entry-card::before {
-  content: "";
+  content: '';
   position: absolute;
   top: -20px;
   right: -1px;
