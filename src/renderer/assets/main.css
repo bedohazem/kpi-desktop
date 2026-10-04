@@ -775,3 +775,22 @@ th {
 .report-employees-table td:nth-last-child(2) {
   font-weight: 800;
 }
+
+.employee-notes-input {
+  width: 100%;
+  min-height: 90px;
+  resize: vertical;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.6;
+  background: white;
+  color: #111827;
+}
+
+.multiline-notes {
+  white-space: pre-line;
+  line-height: 1.6;
+}

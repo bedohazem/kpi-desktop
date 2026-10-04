@@ -319,7 +319,7 @@ export default function ReportsPage(): ReactElement {
           ${monthCells}
           <td>${formatNumber(employee.total)}</td>
           <td>${formatDifference(difference)}</td>
-          <td class="text-cell">${escapeHtml(employee.notes || "-")}</td>
+          <td class="text-cell multiline-notes">${escapeHtml(employee.notes || "-")}</td>
         </tr>
       `;
       })
@@ -440,6 +440,11 @@ export default function ReportsPage(): ReactElement {
             text-align: right;
             font-size: 8px;
           }
+
+          .multiline-notes {
+            white-space: pre-line;
+          }
+
 
           .summary-table th,
           .summary-table td {
@@ -767,7 +772,9 @@ export default function ReportsPage(): ReactElement {
                         <td>
                           {formatDifference(getEmployeeDifference(employee))}
                         </td>
-                        <td>{employee.notes || "-"}</td>
+                        <td className="multiline-notes">
+                          {employee.notes || "-"}
+                        </td>
                       </tr>
                     ))
                   )}

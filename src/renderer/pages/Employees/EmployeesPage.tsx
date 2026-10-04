@@ -1,75 +1,81 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactElement
-} from 'react'
-import type { Department, Employee } from '../../types/api'
-import { toast } from '../../utils/toast'
-import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import type { Department, Employee } from '../../types/api';
+import { toast } from '../../utils/toast';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import {
   flattenDepartmentTree,
   getDepartmentAndDescendantIds,
-  sortEmployeeListByDepartmentTree
-} from '../../utils/departments-tree'
+  sortEmployeeListByDepartmentTree,
+} from '../../utils/departments-tree';
 
 export default function EmployeesPage(): ReactElement {
-  const [departments, setDepartments] = useState<Department[]>([])
-  const [employees, setEmployees] = useState<Employee[]>([])
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
-  const [employeeName, setEmployeeName] = useState('')
-  const [nationalId, setNationalId] = useState('')
-  const [qualification, setQualification] = useState('')
-  const [jobTitle, setJobTitle] = useState('')
-  const [employeeSortOrder, setEmployeeSortOrder] = useState('')
-  const [employeeDepartmentId, setEmployeeDepartmentId] = useState('')
-  const [employeeNotes, setEmployeeNotes] = useState('')
-  const [employeeActive, setEmployeeActive] = useState(true)
+  const [employeeName, setEmployeeName] = useState('');
+  const [nationalId, setNationalId] = useState('');
+  const [qualification, setQualification] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
+  const [employeeSortOrder, setEmployeeSortOrder] = useState('');
+  const [employeeDepartmentId, setEmployeeDepartmentId] = useState('');
+  const [employeeNotes, setEmployeeNotes] = useState('');
+  const [employeeActive, setEmployeeActive] = useState(true);
 
-  const [employeeSearch, setEmployeeSearch] = useState('')
-  const [employeeDepartmentFilter, setEmployeeDepartmentFilter] = useState('')
-  const [isSavingEmployee, setIsSavingEmployee] = useState(false)
-  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null)
-  const [editingEmployeeId, setEditingEmployeeId] = useState<number | null>(null)
-  const [showInactiveEmployees, setShowInactiveEmployees] = useState(false)
+  const [employeeSearch, setEmployeeSearch] = useState('');
+  const [employeeDepartmentFilter, setEmployeeDepartmentFilter] = useState('');
+  const [isSavingEmployee, setIsSavingEmployee] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(
+    null,
+  );
+  const [editingEmployeeId, setEditingEmployeeId] = useState<number | null>(
+    null,
+  );
+  const [showInactiveEmployees, setShowInactiveEmployees] = useState(false);
 
-  const employeeFormRef = useRef<HTMLElement | null>(null)
-  const employeeNameInputRef = useRef<HTMLInputElement | null>(null)
+  const employeeFormRef = useRef<HTMLElement | null>(null);
+  const employeeNameInputRef = useRef<HTMLInputElement | null>(null);
 
-  const departmentOptions = useMemo(() => flattenDepartmentTree(departments), [departments])
+  const departmentOptions = useMemo(
+    () => flattenDepartmentTree(departments),
+    [departments],
+  );
 
   const selectedEmployeeDepartmentIds = useMemo(() => {
     if (!employeeDepartmentFilter) {
-      return null
+      return null;
     }
 
-    return new Set(getDepartmentAndDescendantIds(departments, Number(employeeDepartmentFilter)))
-  }, [departments, employeeDepartmentFilter])
+    return new Set(
+      getDepartmentAndDescendantIds(
+        departments,
+        Number(employeeDepartmentFilter),
+      ),
+    );
+  }, [departments, employeeDepartmentFilter]);
 
   async function loadEmployees(): Promise<void> {
     const rows = await window.api.employees.list({
-      includeInactive: showInactiveEmployees
-    })
+      includeInactive: showInactiveEmployees,
+    });
 
-    setEmployees(rows)
+    setEmployees(rows);
   }
 
   async function saveEmployee(): Promise<void> {
     if (!employeeName.trim()) {
-      toast.error('اكتب اسم الموظف')
-      return
+      toast.error('اكتب اسم الموظف');
+      return;
     }
 
-    const cleanNationalId = nationalId.trim()
+    const cleanNationalId = nationalId.trim();
 
     if (!/^\d{14}$/.test(cleanNationalId)) {
-      toast.error('الرقم القومي لازم يكون 14 رقم بالظبط')
-      return
+      toast.error('الرقم القومي لازم يكون 14 رقم بالظبط');
+      return;
     }
 
     try {
-      setIsSavingEmployee(true)
+      setIsSavingEmployee(true);
 
       if (editingEmployeeId) {
         await window.api.employees.update({
@@ -78,191 +84,181 @@ export default function EmployeesPage(): ReactElement {
           national_id: cleanNationalId,
           qualification,
           job_title: jobTitle,
-          department_id: employeeDepartmentId ? Number(employeeDepartmentId) : null,
-          sort_order: employeeSortOrder
-            ? Number(employeeSortOrder)
-            : 0,
+          department_id: employeeDepartmentId
+            ? Number(employeeDepartmentId)
+            : null,
+          sort_order: employeeSortOrder ? Number(employeeSortOrder) : 0,
           notes: employeeNotes,
-          active: employeeActive
-        })
+          active: employeeActive,
+        });
 
-        toast.success('تم تعديل بيانات الموظف بنجاح')
+        toast.success('تم تعديل بيانات الموظف بنجاح');
       } else {
         await window.api.employees.create({
           name: employeeName,
           national_id: cleanNationalId,
           qualification,
           job_title: jobTitle,
-          department_id: employeeDepartmentId ? Number(employeeDepartmentId) : null,
-          sort_order: employeeSortOrder
-            ? Number(employeeSortOrder)
-            : 0,
+          department_id: employeeDepartmentId
+            ? Number(employeeDepartmentId)
+            : null,
+          sort_order: employeeSortOrder ? Number(employeeSortOrder) : 0,
           notes: employeeNotes,
-          active: employeeActive
-        })
+          active: employeeActive,
+        });
 
-        toast.success('تم حفظ الموظف بنجاح')
+        toast.success('تم حفظ الموظف بنجاح');
       }
 
-      resetEmployeeForm()
-      await loadEmployees()
+      resetEmployeeForm();
+      await loadEmployees();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء حفظ الموظف'
-      toast.error(errorMessage)
+      const errorMessage =
+        error instanceof Error ? error.message : 'حدث خطأ أثناء حفظ الموظف';
+      toast.error(errorMessage);
     } finally {
-      setIsSavingEmployee(false)
+      setIsSavingEmployee(false);
     }
   }
 
   const filteredEmployees = useMemo(() => {
-    const searchText = employeeSearch.trim().toLowerCase()
+    const searchText = employeeSearch.trim().toLowerCase();
 
     const matchingEmployees = employees.filter((employee) => {
       const matchesSearch =
         !searchText ||
         employee.name.toLowerCase().includes(searchText) ||
-        (employee.national_id || '')
-          .toLowerCase()
-          .includes(searchText)
+        (employee.national_id || '').toLowerCase().includes(searchText);
 
       const matchesDepartment =
         !selectedEmployeeDepartmentIds ||
         (employee.department_id !== null &&
-          selectedEmployeeDepartmentIds.has(employee.department_id))
+          selectedEmployeeDepartmentIds.has(employee.department_id));
 
-      return matchesSearch && matchesDepartment
-    })
+      return matchesSearch && matchesDepartment;
+    });
 
-    return sortEmployeeListByDepartmentTree(
-      matchingEmployees,
-      departments
-    )
-  }, [
-    employees,
-    departments,
-    employeeSearch,
-    selectedEmployeeDepartmentIds
-  ])
+    return sortEmployeeListByDepartmentTree(matchingEmployees, departments);
+  }, [employees, departments, employeeSearch, selectedEmployeeDepartmentIds]);
 
   useEffect(() => {
-    let isMounted = true
+    let isMounted = true;
 
     Promise.all([
       window.api.departments.list(),
       window.api.employees.list({
-        includeInactive: showInactiveEmployees
-      })
+        includeInactive: showInactiveEmployees,
+      }),
     ])
       .then(([departmentRows, employeeRows]) => {
         if (isMounted) {
-          setDepartments(departmentRows)
-          setEmployees(employeeRows)
+          setDepartments(departmentRows);
+          setEmployees(employeeRows);
         }
       })
       .catch(() => {
         if (isMounted) {
-          toast.error('حدث خطأ أثناء تحميل بيانات الموظفين')
+          toast.error('حدث خطأ أثناء تحميل بيانات الموظفين');
         }
-      })
+      });
 
     return () => {
-      isMounted = false
-    }
-  }, [showInactiveEmployees])
+      isMounted = false;
+    };
+  }, [showInactiveEmployees]);
 
   function resetEmployeeForm(): void {
-    setEditingEmployeeId(null)
-    setEmployeeName('')
-    setNationalId('')
-    setQualification('')
-    setJobTitle('')
-    setEmployeeDepartmentId('')
-    setEmployeeNotes('')
-    setEmployeeActive(true)
-    setEmployeeSortOrder('')
+    setEditingEmployeeId(null);
+    setEmployeeName('');
+    setNationalId('');
+    setQualification('');
+    setJobTitle('');
+    setEmployeeDepartmentId('');
+    setEmployeeNotes('');
+    setEmployeeActive(true);
+    setEmployeeSortOrder('');
   }
 
   function startEditEmployee(employee: Employee): void {
-    setEditingEmployeeId(employee.id)
-    setEmployeeName(employee.name)
-    setNationalId(employee.national_id || '')
-    setQualification(employee.qualification || '')
-    setJobTitle(employee.job_title || '')
-    setEmployeeDepartmentId(employee.department_id ? String(employee.department_id) : '')
-    setEmployeeNotes(employee.notes || '')
-    setEmployeeActive(Boolean(employee.active))
+    setEditingEmployeeId(employee.id);
+    setEmployeeName(employee.name);
+    setNationalId(employee.national_id || '');
+    setQualification(employee.qualification || '');
+    setJobTitle(employee.job_title || '');
+    setEmployeeDepartmentId(
+      employee.department_id ? String(employee.department_id) : '',
+    );
+    setEmployeeNotes(employee.notes || '');
+    setEmployeeActive(Boolean(employee.active));
     setEmployeeSortOrder(
-      employee.sort_order > 0
-        ? String(employee.sort_order)
-        : ''
-    )
-   toast.info('تعديل بيانات الموظف')
+      employee.sort_order > 0 ? String(employee.sort_order) : '',
+    );
+    toast.info('تعديل بيانات الموظف');
 
     requestAnimationFrame(() => {
       employeeFormRef.current?.scrollIntoView({
         behavior: 'smooth',
-        block: 'start'
-      })
+        block: 'start',
+      });
 
       window.setTimeout(() => {
-        employeeNameInputRef.current?.focus()
-        employeeNameInputRef.current?.select()
-      }, 350)
-    })
+        employeeNameInputRef.current?.focus();
+        employeeNameInputRef.current?.select();
+      }, 350);
+    });
   }
 
   async function toggleEmployeeActive(employee: Employee): Promise<void> {
-    const nextActive = !employee.active
+    const nextActive = !employee.active;
 
     try {
       await window.api.employees.setActive({
         id: employee.id,
-        active: nextActive
-      })
+        active: nextActive,
+      });
 
-      toast.success(nextActive ? 'تم تفعيل الموظف' : 'تم تعطيل الموظف')
-      await loadEmployees()
+      toast.success(nextActive ? 'تم تفعيل الموظف' : 'تم تعطيل الموظف');
+      await loadEmployees();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء تغيير حالة الموظف'
-      toast.error(errorMessage)
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'حدث خطأ أثناء تغيير حالة الموظف';
+      toast.error(errorMessage);
     }
   }
 
-
   async function confirmDeleteEmployee(): Promise<void> {
     if (!employeeToDelete) {
-      return
+      return;
     }
 
     try {
       await window.api.employees.delete({
-        id: employeeToDelete.id
-      })
+        id: employeeToDelete.id,
+      });
 
-      toast.success('تم حذف الموظف بنجاح')
+      toast.success('تم حذف الموظف بنجاح');
 
       if (editingEmployeeId === employeeToDelete.id) {
-        resetEmployeeForm()
+        resetEmployeeForm();
       }
 
-      setEmployeeToDelete(null)
-      await loadEmployees()
+      setEmployeeToDelete(null);
+      await loadEmployees();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء حذف الموظف'
-      toast.error(errorMessage)
+      const errorMessage =
+        error instanceof Error ? error.message : 'حدث خطأ أثناء حذف الموظف';
+      toast.error(errorMessage);
     }
   }
 
   return (
     <>
-      <section
-        ref={employeeFormRef}
-        className="card sticky-entry-card"
-      >
+      <section ref={employeeFormRef} className="card sticky-entry-card">
         <h2>{editingEmployeeId ? 'تعديل بيانات الموظف' : 'إضافة موظف'}</h2>
 
         <div className="form-grid">
-
           <label>
             اسم الموظف
             <input
@@ -279,20 +275,28 @@ export default function EmployeesPage(): ReactElement {
               inputMode="numeric"
               maxLength={14}
               onChange={(event) => {
-                const onlyNumbers = event.target.value.replace(/\D/g, '').slice(0, 14)
-                setNationalId(onlyNumbers)
+                const onlyNumbers = event.target.value
+                  .replace(/\D/g, '')
+                  .slice(0, 14);
+                setNationalId(onlyNumbers);
               }}
             />
           </label>
 
           <label>
             المؤهل
-            <input value={qualification} onChange={(event) => setQualification(event.target.value)} />
+            <input
+              value={qualification}
+              onChange={(event) => setQualification(event.target.value)}
+            />
           </label>
 
           <label>
             الوظيفة
-            <input value={jobTitle} onChange={(event) => setJobTitle(event.target.value)} />
+            <input
+              value={jobTitle}
+              onChange={(event) => setJobTitle(event.target.value)}
+            />
           </label>
 
           <label>
@@ -302,8 +306,8 @@ export default function EmployeesPage(): ReactElement {
               inputMode="numeric"
               placeholder="1 للمدير، 2 للنائب..."
               onChange={(event) => {
-                const value = event.target.value.replace(/\D/g, '')
-                setEmployeeSortOrder(value)
+                const value = event.target.value.replace(/\D/g, '');
+                setEmployeeSortOrder(value);
               }}
             />
           </label>
@@ -326,7 +330,13 @@ export default function EmployeesPage(): ReactElement {
 
           <label>
             ملاحظات
-            <input value={employeeNotes} onChange={(event) => setEmployeeNotes(event.target.value)} />
+            <textarea
+              className="employee-notes-input"
+              value={employeeNotes}
+              rows={4}
+              placeholder="اكتب الملاحظات... استخدم Enter أو Shift + Enter لسطر جديد"
+              onChange={(event) => setEmployeeNotes(event.target.value)}
+            />
           </label>
 
           <label className="checkbox-label">
@@ -339,16 +349,27 @@ export default function EmployeesPage(): ReactElement {
           </label>
         </div>
 
-        <button className="primary-button" disabled={isSavingEmployee} onClick={saveEmployee}>
-          {isSavingEmployee ? 'جاري الحفظ...' : editingEmployeeId ? 'تعديل الموظف' : 'حفظ الموظف'}
+        <button
+          className="primary-button"
+          disabled={isSavingEmployee}
+          onClick={saveEmployee}
+        >
+          {isSavingEmployee
+            ? 'جاري الحفظ...'
+            : editingEmployeeId
+              ? 'تعديل الموظف'
+              : 'حفظ الموظف'}
         </button>
 
         {editingEmployeeId && (
-          <button className="secondary-button" type="button" onClick={resetEmployeeForm}>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={resetEmployeeForm}
+          >
             إلغاء التعديل
           </button>
         )}
-
       </section>
 
       <section className="card">
@@ -359,15 +380,20 @@ export default function EmployeesPage(): ReactElement {
 
         <div className="form-grid">
           <label>
-              بحث بالاسم أو الرقم القومي 
-            <input value={employeeSearch} onChange={(event) => setEmployeeSearch(event.target.value)} />
+            بحث بالاسم أو الرقم القومي
+            <input
+              value={employeeSearch}
+              onChange={(event) => setEmployeeSearch(event.target.value)}
+            />
           </label>
 
           <label>
             فلتر الإدارة
             <select
               value={employeeDepartmentFilter}
-              onChange={(event) => setEmployeeDepartmentFilter(event.target.value)}
+              onChange={(event) =>
+                setEmployeeDepartmentFilter(event.target.value)
+              }
             >
               <option value="">كل الإدارات</option>
               {departments.map((department) => (
@@ -390,7 +416,7 @@ export default function EmployeesPage(): ReactElement {
 
         <table>
           <thead>
-            <tr>              
+            <tr>
               <th>الاسم</th>
               <th>الرقم القومي</th>
               <th>المؤهل</th>
@@ -416,26 +442,32 @@ export default function EmployeesPage(): ReactElement {
                   <td>{employee.qualification || '-'}</td>
                   <td>{employee.job_title || '-'}</td>
                   <td>{employee.department_name || '-'}</td>
-                  <td>
-                    {employee.sort_order > 0
-                      ? employee.sort_order
-                      : '-'}
-                  </td>
+                  <td>{employee.sort_order > 0 ? employee.sort_order : '-'}</td>
                   <td>{employee.active ? 'نشط' : 'غير نشط'}</td>
-                  <td>{employee.notes || '-'}</td>
+                  <td className="multiline-notes">{employee.notes || '-'}</td>
                   <td>
                     <div className="table-actions">
-                      <button className="small-button" onClick={() => startEditEmployee(employee)}>
+                      <button
+                        className="small-button"
+                        onClick={() => startEditEmployee(employee)}
+                      >
                         تعديل
                       </button>
 
                       <button
-                        className={employee.active ? 'small-button danger' : 'small-button success'}
+                        className={
+                          employee.active
+                            ? 'small-button danger'
+                            : 'small-button success'
+                        }
                         onClick={() => toggleEmployeeActive(employee)}
                       >
                         {employee.active ? 'تعطيل' : 'تفعيل'}
                       </button>
-                      <button className="small-button danger" onClick={() => setEmployeeToDelete(employee)}>
+                      <button
+                        className="small-button danger"
+                        onClick={() => setEmployeeToDelete(employee)}
+                      >
                         حذف
                       </button>
                     </div>
@@ -455,10 +487,10 @@ export default function EmployeesPage(): ReactElement {
         cancelText="إلغاء"
         danger
         onConfirm={() => {
-          void confirmDeleteEmployee()
+          void confirmDeleteEmployee();
         }}
         onCancel={() => setEmployeeToDelete(null)}
       />
     </>
-  )
+  );
 }
