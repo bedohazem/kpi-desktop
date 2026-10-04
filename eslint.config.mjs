@@ -1,32 +1,21 @@
-import { defineConfig } from 'eslint/config'
-import tseslint from '@electron-toolkit/eslint-config-ts'
-import eslintConfigPrettier from '@electron-toolkit/eslint-config-prettier'
-import eslintPluginReact from 'eslint-plugin-react'
-import eslintPluginReactHooks from 'eslint-plugin-react-hooks'
-import eslintPluginReactRefresh from 'eslint-plugin-react-refresh'
+import js from "@eslint/js";
+import reactHooks from "eslint-plugin-react-hooks";
+import reactRefresh from "eslint-plugin-react-refresh";
+import eslintConfigPrettier from "eslint-config-prettier";
 
-export default defineConfig(
-  { ignores: ['**/node_modules', '**/dist', '**/out', 'electron-main.cjs', 'preload.cjs'] },
-  tseslint.configs.recommended,
-  eslintPluginReact.configs.flat.recommended,
-  eslintPluginReact.configs.flat['jsx-runtime'],
+export default [
+  js.configs.recommended,
+  eslintConfigPrettier, // 👈 هذا السطر يمنع ESLint من إظهار أي تحذيرات تخص المسافات أو التنسيق
   {
-    settings: {
-      react: {
-        version: 'detect'
-      }
-    }
-  },
-  {
-    files: ['**/*.{ts,tsx}'],
     plugins: {
-      'react-hooks': eslintPluginReactHooks,
-      'react-refresh': eslintPluginReactRefresh
+      "react-hooks": reactHooks,
+      "react-refresh": reactRefresh,
     },
     rules: {
-      ...eslintPluginReactHooks.configs.recommended.rules,
-      ...eslintPluginReactRefresh.configs.vite.rules
-    }
+      ...reactHooks.configs.recommended.rules, // 👈 ينبهك لو نسيت الـ Dependency Array في useEffect
+      "react-refresh/only-export-components": "warn",
+      "no-unused-vars": "warn", // 👈 ينبهك لو عملت متغير ونسيته (تحذير وليس خطأ أحمر)
+      "no-console": "off", // 👈 يسمح لك بكتابة console.log بدون إزعاج
+    },
   },
-  eslintConfigPrettier
-)
+];
