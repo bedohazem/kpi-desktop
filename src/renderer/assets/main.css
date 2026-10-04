@@ -1,4 +1,4 @@
-@import './base.css';
+@import "./base.css";
 
 * {
   box-sizing: border-box;
@@ -205,7 +205,6 @@ th {
   color: #4b5563;
   font-weight: 700;
 }
-
 
 .actions-row {
   display: flex;
@@ -493,7 +492,6 @@ th {
   background: #fee2e2;
 }
 
-
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -636,7 +634,6 @@ th {
   border-top: 2px solid #111827;
 }
 
-
 /* الهيدر والتابات ثابتين أعلى الشاشة */
 .app-topbar {
   position: sticky;
@@ -669,7 +666,7 @@ th {
 
 /* منع ظهور محتوى الجدول خلف الكارت بشكل مزعج */
 .sticky-entry-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -20px;
   right: -1px;
@@ -698,4 +695,83 @@ th {
   .sticky-entry-card {
     top: 148px;
   }
+}
+
+/* جدول تقرير الموظفين */
+.report-table-wrapper {
+  width: 100%;
+  max-height: calc(100vh - 210px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.report-employees-table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+  margin-top: 0;
+}
+
+.report-employees-table th,
+.report-employees-table td {
+  line-height: 1.25;
+  text-align: center;
+  vertical-align: middle;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* من شهر إلى 3 شهور */
+.report-employees-table.report-table-large {
+  table-layout: auto;
+}
+
+.report-employees-table.report-table-large th,
+.report-employees-table.report-table-large td {
+  padding: 9px 7px;
+  font-size: 13px;
+}
+
+/* من 4 إلى 7 شهور */
+.report-employees-table.report-table-medium {
+  table-layout: fixed;
+}
+
+.report-employees-table.report-table-medium th,
+.report-employees-table.report-table-medium td {
+  padding: 7px 5px;
+  font-size: 12px;
+}
+
+/* من 8 إلى 12 شهر */
+.report-employees-table.report-table-compact {
+  table-layout: fixed;
+}
+
+.report-employees-table.report-table-compact th,
+.report-employees-table.report-table-compact td {
+  padding: 5px 3px;
+  font-size: 10.5px;
+}
+
+.report-employees-table td:nth-child(2),
+.report-employees-table td:nth-child(4),
+.report-employees-table td:nth-child(5) {
+  font-size: 12px;
+}
+
+/* تثبيت هيدر الجدول أثناء النزول */
+.report-employees-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #f9fafb;
+  font-weight: 800;
+  box-shadow: 0 1px 0 #d1d5db;
+}
+
+/* تمييز عمود الفرق */
+.report-employees-table th:nth-last-child(2),
+.report-employees-table td:nth-last-child(2) {
+  font-weight: 800;
 }

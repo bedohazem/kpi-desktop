@@ -1,255 +1,284 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactElement } from 'react'
-import type { Department, EvaluationEmployee } from '../../types/api'
-import { toast } from '../../utils/toast'
-import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactElement,
+} from "react";
+import type { Department, EvaluationEmployee } from "../../types/api";
+import { toast } from "../../utils/toast";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import {
   flattenDepartmentTree,
-  sortEmployeesByDepartmentTree
-} from '../../utils/departments-tree'
+  sortEmployeesByDepartmentTree,
+} from "../../utils/departments-tree";
 
 type EvaluationRowState = EvaluationEmployee & {
-  evaluationValueInput: string
-  notesInput: string
-}
+  evaluationValueInput: string;
+  notesInput: string;
+};
 
-const currentDate = new Date()
+const currentDate = new Date();
 
 export default function EvaluationsPage(): ReactElement {
-  const [departments, setDepartments] = useState<Department[]>([])
-  const [rows, setRows] = useState<EvaluationRowState[]>([])
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [rows, setRows] = useState<EvaluationRowState[]>([]);
 
-  const [month, setMonth] = useState(String(currentDate.getMonth() + 1))
-  const [year, setYear] = useState(String(currentDate.getFullYear()))
-  const [departmentId, setDepartmentId] = useState('')
+  const [month, setMonth] = useState(String(currentDate.getMonth() + 1));
+  const [year, setYear] = useState(String(currentDate.getFullYear()));
+  const [departmentId, setDepartmentId] = useState("");
 
-  const [isLoading, setIsLoading] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [evaluationSearch, setEvaluationSearch] = useState('')
-  const [showMissingOnly, setShowMissingOnly] = useState(false)
-  const [activeEvaluationEmployeeId, setActiveEvaluationEmployeeId] = useState<number | null>(null)
-  const evaluationInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
-  const [copyDialogOpen, setCopyDialogOpen] = useState(false)
-  const [isExportingPdf, setIsExportingPdf] = useState(false)
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [evaluationSearch, setEvaluationSearch] = useState("");
+  const [showMissingOnly, setShowMissingOnly] = useState(false);
+  const [activeEvaluationEmployeeId, setActiveEvaluationEmployeeId] = useState<
+    number | null
+  >(null);
+  const evaluationInputRefs = useRef<Record<number, HTMLInputElement | null>>(
+    {},
+  );
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
-  const departmentOptions = useMemo(() => flattenDepartmentTree(departments), [departments])
-
+  const departmentOptions = useMemo(
+    () => flattenDepartmentTree(departments),
+    [departments],
+  );
 
   const orderedEvaluationRows = useMemo(
-  () => sortEmployeesByDepartmentTree(rows, departments),
-  [rows, departments]
-)
+    () => sortEmployeesByDepartmentTree(rows, departments),
+    [rows, departments],
+  );
 
   const evaluationSummary = useMemo(() => {
     const values = rows
       .map((row) => row.evaluationValueInput.trim())
       .filter(Boolean)
       .map((value) => Number(value))
-      .filter((value) => Number.isFinite(value))
+      .filter((value) => Number.isFinite(value));
 
-    const total = values.reduce((sum, value) => sum + value, 0)
-    const average = values.length > 0 ? total / values.length : 0
-    const missing = rows.filter((row) => !row.evaluationValueInput.trim()).length
+    const total = values.reduce((sum, value) => sum + value, 0);
+    const average = values.length > 0 ? total / values.length : 0;
+    const missing = rows.filter(
+      (row) => !row.evaluationValueInput.trim(),
+    ).length;
 
     return {
       total,
       average,
       entered: values.length,
-      missing
-    }
-  }, [rows])
+      missing,
+    };
+  }, [rows]);
 
   const visibleEvaluationRows = useMemo(() => {
-    const searchText = evaluationSearch.trim().toLowerCase()
+    const searchText = evaluationSearch.trim().toLowerCase();
 
     return orderedEvaluationRows.filter((row) => {
       const matchesSearch =
         !searchText ||
         row.employee_name.toLowerCase().includes(searchText) ||
-        (row.job_title || '').toLowerCase().includes(searchText) ||
-        (row.department_name || '').toLowerCase().includes(searchText)
+        (row.job_title || "").toLowerCase().includes(searchText) ||
+        (row.department_name || "").toLowerCase().includes(searchText);
 
       const matchesMissing =
         !showMissingOnly ||
         !row.evaluationValueInput.trim() ||
-        row.employee_id === activeEvaluationEmployeeId
+        row.employee_id === activeEvaluationEmployeeId;
 
-      return matchesSearch && matchesMissing
-    })
-  }, [orderedEvaluationRows, evaluationSearch, showMissingOnly, activeEvaluationEmployeeId])
+      return matchesSearch && matchesMissing;
+    });
+  }, [
+    orderedEvaluationRows,
+    evaluationSearch,
+    showMissingOnly,
+    activeEvaluationEmployeeId,
+  ]);
 
   async function loadRows(): Promise<void> {
-    toast.info('جاري تحميل التقييمات...')
+    toast.info("جاري تحميل التقييمات...");
 
     try {
-      setIsLoading(true)
+      setIsLoading(true);
 
       const evaluationRows = await window.api.evaluations.listEmployees({
         month: Number(month),
         year: Number(year),
-        department_id: departmentId ? Number(departmentId) : null
-      })
+        department_id: departmentId ? Number(departmentId) : null,
+      });
 
       setRows(
         evaluationRows.map((row) => ({
           ...row,
-          evaluationValueInput: row.evaluation_value === null ? '' : String(row.evaluation_value),
-          notesInput: row.evaluation_notes || ''
-        }))
-      )
+          evaluationValueInput:
+            row.evaluation_value === null ? "" : String(row.evaluation_value),
+          notesInput: row.evaluation_notes || "",
+        })),
+      );
 
-      toast.success('تم تحميل الموظفين')
+      toast.success("تم تحميل الموظفين");
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء تحميل التقييمات'
-      toast.error(errorMessage)
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "حدث خطأ أثناء تحميل التقييمات";
+      toast.error(errorMessage);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
   async function saveEvaluations(): Promise<void> {
-    toast.info('جاري حفظ التقييمات...')
+    toast.info("جاري حفظ التقييمات...");
 
     if (rows.length === 0) {
-      toast.warning('لا توجد بيانات للحفظ')
-      return
+      toast.warning("لا توجد بيانات للحفظ");
+      return;
     }
 
     try {
-      setIsSaving(true)
+      setIsSaving(true);
 
       await window.api.evaluations.saveMonth({
         month: Number(month),
         year: Number(year),
         items: rows.map((row) => ({
           employee_id: row.employee_id,
-          evaluation_value: row.evaluationValueInput ? Number(row.evaluationValueInput) : 0,
-          notes: ''
-        }))
-      })
+          evaluation_value: row.evaluationValueInput
+            ? Number(row.evaluationValueInput)
+            : 0,
+          notes: "",
+        })),
+      });
 
-      toast.success('تم حفظ تقييمات الشهر بنجاح')
-      await loadRows()
+      toast.success("تم حفظ تقييمات الشهر بنجاح");
+      await loadRows();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء حفظ التقييمات'
-      toast.error(errorMessage)
+      const errorMessage =
+        error instanceof Error ? error.message : "حدث خطأ أثناء حفظ التقييمات";
+      toast.error(errorMessage);
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
   }
 
   async function copyPreviousMonth(): Promise<void> {
-    setCopyDialogOpen(false)
-    toast.info('جاري نسخ تقييمات الشهر السابق...')
+    setCopyDialogOpen(false);
+    toast.info("جاري نسخ تقييمات الشهر السابق...");
 
     try {
       const result = await window.api.evaluations.copyPreviousMonth({
         month: Number(month),
         year: Number(year),
-        department_id: departmentId ? Number(departmentId) : null
-      })
+        department_id: departmentId ? Number(departmentId) : null,
+      });
 
-      toast.success(`تم نسخ ${result.copied} تقييم من الشهر السابق`)
-      await loadRows()
+      toast.success(`تم نسخ ${result.copied} تقييم من الشهر السابق`);
+      await loadRows();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء النسخ'
-      toast.error(errorMessage)
+      const errorMessage =
+        error instanceof Error ? error.message : "حدث خطأ أثناء النسخ";
+      toast.error(errorMessage);
     }
   }
 
   function updateEvaluationValue(employeeId: number, value: string): void {
-    const cleanValue = value.replace(/[^\d.]/g, '')
+    const cleanValue = value.replace(/[^\d.]/g, "");
 
     setRows((currentRows) =>
       currentRows.map((row) =>
-        row.employee_id === employeeId ? { ...row, evaluationValueInput: cleanValue } : row
-      )
-    )
+        row.employee_id === employeeId
+          ? { ...row, evaluationValueInput: cleanValue }
+          : row,
+      ),
+    );
   }
 
   useEffect(() => {
-    let isMounted = true
+    let isMounted = true;
 
     window.api.departments
       .list()
       .then((departmentRows) => {
         if (isMounted) {
-          setDepartments(departmentRows)
+          setDepartments(departmentRows);
         }
       })
       .catch(() => {
         if (isMounted) {
-          toast.error('حدث خطأ أثناء تحميل الإدارات')
+          toast.error("حدث خطأ أثناء تحميل الإدارات");
         }
-      })
+      });
 
     return () => {
-      isMounted = false
-    }
-  }, [])
+      isMounted = false;
+    };
+  }, []);
 
   function requestCopyPreviousMonth(): void {
-    setCopyDialogOpen(true)
+    setCopyDialogOpen(true);
   }
 
   function focusNextEvaluationInput(currentIndex: number): void {
-    const nextRow = visibleEvaluationRows[currentIndex + 1]
+    const nextRow = visibleEvaluationRows[currentIndex + 1];
 
     if (!nextRow) {
-      return
+      return;
     }
 
-    evaluationInputRefs.current[nextRow.employee_id]?.focus()
-    evaluationInputRefs.current[nextRow.employee_id]?.select()
+    evaluationInputRefs.current[nextRow.employee_id]?.focus();
+    evaluationInputRefs.current[nextRow.employee_id]?.select();
   }
 
   function handleEvaluationKeyDown(
     event: KeyboardEvent<HTMLInputElement>,
-    currentIndex: number
+    currentIndex: number,
   ): void {
-    if (event.key !== 'Enter') {
-      return
+    if (event.key !== "Enter") {
+      return;
     }
 
-    event.preventDefault()
-    focusNextEvaluationInput(currentIndex)
+    event.preventDefault();
+    focusNextEvaluationInput(currentIndex);
   }
 
-
   function escapeEvaluationPdfHtml(
-  value: string | number | null | undefined
-): string {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;')
-}
+    value: string | number | null | undefined,
+  ): string {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
 
-function buildMonthlyEvaluationsPdfHtml(): string {
-  const selectedDepartment = departmentId
-    ? departmentOptions.find(
-        (department) => department.id === Number(departmentId)
-      )
-    : null
+  function buildMonthlyEvaluationsPdfHtml(): string {
+    const selectedDepartment = departmentId
+      ? departmentOptions.find(
+          (department) => department.id === Number(departmentId),
+        )
+      : null;
 
-  const tableRows = visibleEvaluationRows
-    .map(
-      (row, index) => `
+    const tableRows = visibleEvaluationRows
+      .map(
+        (row, index) => `
         <tr>
           <td>${index + 1}</td>
           <td class="text-cell">${escapeEvaluationPdfHtml(row.employee_name)}</td>
-          <td class="text-cell">${escapeEvaluationPdfHtml(row.qualification || '-')}</td>
-          <td class="text-cell">${escapeEvaluationPdfHtml(row.department_name || '-')}</td>
-          <td class="text-cell">${escapeEvaluationPdfHtml(row.job_title || '-')}</td>
+          <td class="text-cell">${escapeEvaluationPdfHtml(row.qualification || "-")}</td>
+          <td class="text-cell">${escapeEvaluationPdfHtml(row.department_name || "-")}</td>
+          <td class="text-cell">${escapeEvaluationPdfHtml(row.job_title || "-")}</td>
           <td>${escapeEvaluationPdfHtml(row.evaluationValueInput)}</td>
-          <td class="text-cell">${escapeEvaluationPdfHtml(row.notesInput || '-')}</td>
+          <td class="text-cell">${escapeEvaluationPdfHtml(row.notesInput || "-")}</td>
         </tr>
-      `
-    )
-    .join('')
+      `,
+      )
+      .join("");
 
-  return `
+    return `
     <!doctype html>
     <html lang="ar" dir="rtl">
       <head>
@@ -341,7 +370,7 @@ function buildMonthlyEvaluationsPdfHtml(): string {
 
             <div class="subtitle">
               الإدارة:
-              ${escapeEvaluationPdfHtml(selectedDepartment?.path || 'كل الإدارات')}
+              ${escapeEvaluationPdfHtml(selectedDepartment?.path || "كل الإدارات")}
               <br />
               عدد الموظفين: ${visibleEvaluationRows.length}
             </div>
@@ -353,7 +382,7 @@ function buildMonthlyEvaluationsPdfHtml(): string {
             السنة: ${escapeEvaluationPdfHtml(year)}
             <br />
             تاريخ الطباعة:
-            ${escapeEvaluationPdfHtml(new Date().toLocaleDateString('ar-EG'))}
+            ${escapeEvaluationPdfHtml(new Date().toLocaleDateString("ar-EG"))}
           </div>
         </div>
 
@@ -389,40 +418,40 @@ function buildMonthlyEvaluationsPdfHtml(): string {
         </table>
       </body>
     </html>
-  `
-}
-
-async function exportMonthlyEvaluationsToPdf(): Promise<void> {
-  if (visibleEvaluationRows.length === 0) {
-    toast.warning('لا توجد تقييمات ظاهرة لتصديرها')
-    return
+  `;
   }
 
-  try {
-    setIsExportingPdf(true)
-
-    const result = await window.api.reports.savePdf({
-      html: buildMonthlyEvaluationsPdfHtml(),
-      fileName: `Monthly_Evaluations_${year}_${month}.pdf`
-    })
-
-    if (result.canceled) {
-      toast.info('تم إلغاء حفظ PDF')
-      return
+  async function exportMonthlyEvaluationsToPdf(): Promise<void> {
+    if (visibleEvaluationRows.length === 0) {
+      toast.warning("لا توجد تقييمات ظاهرة لتصديرها");
+      return;
     }
 
-    toast.success('تم حفظ قائمة تقييمات الشهر PDF')
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : 'حدث خطأ أثناء حفظ قائمة التقييمات'
+    try {
+      setIsExportingPdf(true);
 
-    toast.error(errorMessage)
-  } finally {
-    setIsExportingPdf(false)
+      const result = await window.api.reports.savePdf({
+        html: buildMonthlyEvaluationsPdfHtml(),
+        fileName: `Monthly_Evaluations_${year}_${month}.pdf`,
+      });
+
+      if (result.canceled) {
+        toast.info("تم إلغاء حفظ PDF");
+        return;
+      }
+
+      toast.success("تم حفظ قائمة تقييمات الشهر PDF");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "حدث خطأ أثناء حفظ قائمة التقييمات";
+
+      toast.error(errorMessage);
+    } finally {
+      setIsExportingPdf(false);
+    }
   }
-}
 
   return (
     <>
@@ -432,27 +461,40 @@ async function exportMonthlyEvaluationsToPdf(): Promise<void> {
         <div className="form-grid">
           <label>
             السنة
-            <input value={year} onChange={(event) => setYear(event.target.value.replace(/\D/g, ''))} />
+            <input
+              value={year}
+              onChange={(event) =>
+                setYear(event.target.value.replace(/\D/g, ""))
+              }
+            />
           </label>
 
           <label>
             الشهر
-            <select value={month} onChange={(event) => setMonth(event.target.value)}>
-              {Array.from({ length: 12 }, (_, index) => index + 1).map((monthNumber) => (
-                <option key={monthNumber} value={monthNumber}>
-                  {monthNumber}
-                </option>
-              ))}
+            <select
+              value={month}
+              onChange={(event) => setMonth(event.target.value)}
+            >
+              {Array.from({ length: 12 }, (_, index) => index + 1).map(
+                (monthNumber) => (
+                  <option key={monthNumber} value={monthNumber}>
+                    {monthNumber}
+                  </option>
+                ),
+              )}
             </select>
           </label>
 
           <label>
             الإدارة
-            <select value={departmentId} onChange={(event) => setDepartmentId(event.target.value)}>
+            <select
+              value={departmentId}
+              onChange={(event) => setDepartmentId(event.target.value)}
+            >
               <option value="">كل الإدارات</option>
               {departmentOptions.map((department) => (
                 <option key={department.id} value={department.id}>
-                  {'— '.repeat(department.level)}
+                  {"— ".repeat(department.level)}
                   {department.name}
                 </option>
               ))}
@@ -461,16 +503,27 @@ async function exportMonthlyEvaluationsToPdf(): Promise<void> {
         </div>
 
         <div className="actions-row">
-          <button className="primary-button" disabled={isLoading} onClick={loadRows}>
-            {isLoading ? 'جاري التحميل...' : 'تحميل الموظفين'}
+          <button
+            className="primary-button"
+            disabled={isLoading}
+            onClick={loadRows}
+          >
+            {isLoading ? "جاري التحميل..." : "تحميل الموظفين"}
           </button>
 
-          <button className="secondary-button" onClick={requestCopyPreviousMonth}>
+          <button
+            className="secondary-button"
+            onClick={requestCopyPreviousMonth}
+          >
             نسخ من الشهر السابق
           </button>
 
-          <button className="primary-button" disabled={isSaving || rows.length === 0} onClick={saveEvaluations}>
-            {isSaving ? 'جاري الحفظ...' : 'حفظ التقييمات'}
+          <button
+            className="primary-button"
+            disabled={isSaving || rows.length === 0}
+            onClick={saveEvaluations}
+          >
+            {isSaving ? "جاري الحفظ..." : "حفظ التقييمات"}
           </button>
 
           <button
@@ -478,10 +531,9 @@ async function exportMonthlyEvaluationsToPdf(): Promise<void> {
             disabled={isExportingPdf || visibleEvaluationRows.length === 0}
             onClick={exportMonthlyEvaluationsToPdf}
           >
-            {isExportingPdf ? 'جاري إنشاء PDF...' : 'قائمة تقييمات الشهر PDF'}
+            {isExportingPdf ? "جاري إنشاء PDF..." : "قائمة تقييمات الشهر PDF"}
           </button>
         </div>
-
       </section>
 
       {rows.length > 0 && (
@@ -550,8 +602,8 @@ async function exportMonthlyEvaluationsToPdf(): Promise<void> {
         <div className="table-wrapper">
           <table>
             <thead>
-              <tr>       
-                <th>م</th>         
+              <tr>
+                <th>م</th>
                 <th>اسم الموظف</th>
                 <th>المؤهل</th>
                 <th>الإدارة</th>
@@ -565,7 +617,9 @@ async function exportMonthlyEvaluationsToPdf(): Promise<void> {
               {visibleEvaluationRows.length === 0 ? (
                 <tr>
                   <td colSpan={7}>
-                    {rows.length === 0 ? 'اختار الشهر ثم اضغط تحميل الموظفين' : 'لا توجد نتائج مطابقة للبحث'}
+                    {rows.length === 0
+                      ? "اختار الشهر ثم اضغط تحميل الموظفين"
+                      : "لا توجد نتائج مطابقة للبحث"}
                   </td>
                 </tr>
               ) : (
@@ -573,29 +627,37 @@ async function exportMonthlyEvaluationsToPdf(): Promise<void> {
                   <tr key={row.employee_id}>
                     <td>{index + 1}</td>
                     <td>{row.employee_name}</td>
-                    <td>{row.qualification || '-'}</td>
-                    <td>{row.department_name || '-'}</td>
-                    <td>{row.job_title || '-'}</td>
+                    <td>{row.qualification || "-"}</td>
+                    <td>{row.department_name || "-"}</td>
+                    <td>{row.job_title || "-"}</td>
                     <td>
                       <input
                         ref={(element) => {
-                          evaluationInputRefs.current[row.employee_id] = element
+                          evaluationInputRefs.current[row.employee_id] =
+                            element;
                         }}
                         className="table-input"
                         value={row.evaluationValueInput}
                         inputMode="decimal"
                         onFocus={(event) => {
-                          setActiveEvaluationEmployeeId(row.employee_id)
-                          event.target.select()
+                          setActiveEvaluationEmployeeId(row.employee_id);
+                          event.target.select();
                         }}
                         onBlur={() => {
-                          setActiveEvaluationEmployeeId(null)
+                          setActiveEvaluationEmployeeId(null);
                         }}
-                        onKeyDown={(event) => handleEvaluationKeyDown(event, index)}
-                        onChange={(event) => updateEvaluationValue(row.employee_id, event.target.value)}
+                        onKeyDown={(event) =>
+                          handleEvaluationKeyDown(event, index)
+                        }
+                        onChange={(event) =>
+                          updateEvaluationValue(
+                            row.employee_id,
+                            event.target.value,
+                          )
+                        }
                       />
                     </td>
-                    <td>{row.notesInput || '-'}</td>
+                    <td>{row.notesInput || "-"}</td>
                   </tr>
                 ))
               )}
@@ -611,10 +673,10 @@ async function exportMonthlyEvaluationsToPdf(): Promise<void> {
         confirmText="نسخ"
         cancelText="إلغاء"
         onConfirm={() => {
-          void copyPreviousMonth()
+          void copyPreviousMonth();
         }}
         onCancel={() => setCopyDialogOpen(false)}
       />
     </>
-  )
+  );
 }

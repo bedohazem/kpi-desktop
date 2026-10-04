@@ -1,282 +1,333 @@
-import { useEffect, useMemo, useState, type ReactElement } from 'react'
-import type { Department, Employee, ReportsResult } from '../../types/api'
-import * as XLSX from 'xlsx'
-import { toast } from '../../utils/toast'
+import { useEffect, useMemo, useState, type ReactElement } from "react";
+import type { Department, Employee, ReportsResult } from "../../types/api";
+import * as XLSX from "xlsx";
+import { toast } from "../../utils/toast";
 import {
   flattenDepartmentTree,
   getDepartmentAndDescendantIds,
   sortDepartmentSummaryByTree,
-  sortEmployeesByDepartmentTree
-} from '../../utils/departments-tree'
+  sortEmployeesByDepartmentTree,
+} from "../../utils/departments-tree";
 
-const currentYear = new Date().getFullYear()
+const currentYear = new Date().getFullYear();
 
 export default function ReportsPage(): ReactElement {
-  const [departments, setDepartments] = useState<Department[]>([])
-  const [employees, setEmployees] = useState<Employee[]>([])
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
-  const [year, setYear] = useState(String(currentYear))
-  const [fromMonth, setFromMonth] = useState('1')
-  const [toMonth, setToMonth] = useState('12')
-  const [departmentId, setDepartmentId] = useState('')
-  const [employeeId, setEmployeeId] = useState('')
+  const [year, setYear] = useState(String(currentYear));
+  const [fromMonth, setFromMonth] = useState("1");
+  const [toMonth, setToMonth] = useState("12");
+  const [departmentId, setDepartmentId] = useState("");
+  const [employeeId, setEmployeeId] = useState("");
 
-  const [report, setReport] = useState<ReportsResult | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [report, setReport] = useState<ReportsResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const departmentOptions = useMemo(() => flattenDepartmentTree(departments), [departments])
+  const departmentOptions = useMemo(
+    () => flattenDepartmentTree(departments),
+    [departments],
+  );
 
   const selectedReportDepartmentIds = useMemo(() => {
     if (!departmentId) {
-      return null
+      return null;
     }
 
-    return new Set(getDepartmentAndDescendantIds(departments, Number(departmentId)))
-  }, [departments, departmentId])
+    return new Set(
+      getDepartmentAndDescendantIds(departments, Number(departmentId)),
+    );
+  }, [departments, departmentId]);
 
   const filteredEmployees = useMemo(() => {
     if (!selectedReportDepartmentIds) {
-      return employees
+      return employees;
     }
 
     return employees.filter(
       (employee) =>
-        employee.department_id !== null && selectedReportDepartmentIds.has(employee.department_id)
-    )
-  }, [employees, selectedReportDepartmentIds])
+        employee.department_id !== null &&
+        selectedReportDepartmentIds.has(employee.department_id),
+    );
+  }, [employees, selectedReportDepartmentIds]);
 
   const orderedReportEmployees = useMemo(() => {
     if (!report) {
-      return []
+      return [];
     }
 
-    return sortEmployeesByDepartmentTree(report.employees, departments)
-  }, [report, departments])
+    return sortEmployeesByDepartmentTree(report.employees, departments);
+  }, [report, departments]);
+
+  function getEmployeeDifference(
+    employee: ReportsResult["employees"][number],
+  ): number | null {
+    if (!report || report.months.length < 2) {
+      return null;
+    }
+
+    const firstMonth = report.months[0];
+    const lastMonth = report.months[report.months.length - 1];
+
+    const firstValue = employee.month_values[String(firstMonth)];
+    const lastValue = employee.month_values[String(lastMonth)];
+
+    if (typeof firstValue !== "number" || typeof lastValue !== "number") {
+      return null;
+    }
+
+    return lastValue - firstValue;
+  }
+
+  function formatDifference(value: number | null): string {
+    if (value === null) {
+      return "-";
+    }
+
+    const formatted = Number(value.toFixed(2));
+
+    if (formatted > 0) {
+      return `+${formatted}`;
+    }
+
+    return String(formatted);
+  }
 
   const reportTotals = useMemo(() => {
-    const monthTotals: Record<string, number> = {}
+    const monthTotals: Record<string, number> = {};
 
     if (!report) {
       return {
         monthTotals,
         grandTotal: 0,
-        overallAverage: 0
-      }
+        overallDifference: null as number | null,
+      };
     }
 
     for (const reportMonth of report.months) {
       monthTotals[String(reportMonth)] = orderedReportEmployees.reduce(
         (sum, employee) => {
-          const value = employee.month_values[String(reportMonth)]
-          return sum + (typeof value === 'number' ? value : 0)
+          const value = employee.month_values[String(reportMonth)];
+          return sum + (typeof value === "number" ? value : 0);
         },
-        0
-      )
+        0,
+      );
     }
 
     const grandTotal = Object.values(monthTotals).reduce(
       (sum, value) => sum + value,
-      0
-    )
+      0,
+    );
 
-    const overallAverage = orderedReportEmployees.reduce(
-      (sum, employee) => sum + employee.average,
-      0
-    )
+    let overallDifference: number | null = null;
+
+    if (report.months.length >= 2) {
+      const firstMonth = report.months[0];
+      const lastMonth = report.months[report.months.length - 1];
+
+      overallDifference =
+        monthTotals[String(lastMonth)] - monthTotals[String(firstMonth)];
+    }
 
     return {
       monthTotals,
       grandTotal,
-      overallAverage
-    }
-  }, [report, orderedReportEmployees])
+      overallDifference,
+    };
+  }, [report, orderedReportEmployees]);
 
   const orderedDepartmentSummary = useMemo(() => {
     if (!report) {
-      return []
+      return [];
     }
 
-    return sortDepartmentSummaryByTree(
-      report.departmentSummary,
-      departments
-    )
-  }, [report, departments])
+    return sortDepartmentSummaryByTree(report.departmentSummary, departments);
+  }, [report, departments]);
 
   async function generateReport(): Promise<void> {
-    toast.info('جاري انشاء تقرير ...')
+    toast.info("جاري انشاء تقرير ...");
 
     try {
-      setIsLoading(true)
+      setIsLoading(true);
 
       const result = await window.api.reports.generate({
         year: Number(year),
         from_month: Number(fromMonth),
         to_month: Number(toMonth),
         department_id: departmentId ? Number(departmentId) : null,
-        employee_id: employeeId ? Number(employeeId) : null
-      })
+        employee_id: employeeId ? Number(employeeId) : null,
+      });
 
-      setReport(result)
-      toast.success('تم إنشاء التقرير')
+      setReport(result);
+      toast.success("تم إنشاء التقرير");
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء إنشاء التقرير'
-      toast.error(errorMessage)
+      const errorMessage =
+        error instanceof Error ? error.message : "حدث خطأ أثناء إنشاء التقرير";
+      toast.error(errorMessage);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
   useEffect(() => {
-    let isMounted = true
+    let isMounted = true;
 
     Promise.all([window.api.departments.list(), window.api.employees.list()])
       .then(([departmentRows, employeeRows]) => {
         if (isMounted) {
-          setDepartments(departmentRows)
-          setEmployees(employeeRows)
+          setDepartments(departmentRows);
+          setEmployees(employeeRows);
         }
       })
       .catch(() => {
         if (isMounted) {
-          toast.error('حدث خطأ أثناء تحميل بيانات التقرير')
+          toast.error("حدث خطأ أثناء تحميل بيانات التقرير");
         }
-      })
+      });
 
     return () => {
-      isMounted = false
-    }
-  }, [])
+      isMounted = false;
+    };
+  }, []);
 
   function exportReportToExcel(): void {
-  if (!report) {
-    toast.warning('اعرض التقرير الأول قبل التصدير')
-    return
-  }
-
-  const employeeRows = orderedReportEmployees.map((employee, index) => {
-    const row: Record<string, string | number> = {
-      م: index + 1,
-      'اسم الموظف': employee.employee_name,
-      المؤهل: employee.qualification || '',
-      الإدارة: employee.department_name || '',
-      الوظيفة: employee.job_title || ''
+    if (!report) {
+      toast.warning("اعرض التقرير الأول قبل التصدير");
+      return;
     }
 
-    for (const reportMonth of report.months) {
-      const value = employee.month_values[String(reportMonth)]
-      row[`شهر ${reportMonth}`] = value === null ? '' : value
+    const employeeRows = orderedReportEmployees.map((employee, index) => {
+      const row: Record<string, string | number> = {
+        م: index + 1,
+        "اسم الموظف": employee.employee_name,
+        المؤهل: employee.qualification || "",
+        الإدارة: employee.department_name || "",
+        الوظيفة: employee.job_title || "",
+      };
+
+      for (const reportMonth of report.months) {
+        const value = employee.month_values[String(reportMonth)];
+        row[`شهر ${reportMonth}`] = value === null ? "" : value;
+      }
+
+      const difference = getEmployeeDifference(employee);
+
+      row["الإجمالي"] = Number(employee.total.toFixed(2));
+      row["الفرق"] = difference === null ? "" : Number(difference.toFixed(2));
+      row["ملاحظات"] = employee.notes || "";
+
+      return row;
+    });
+
+    if (employeeRows.length > 0) {
+      const totalExcelRow: Record<string, string | number> = {
+        م: "",
+        "اسم الموظف": "الإجمالي",
+        المؤهل: "",
+        الإدارة: "",
+        الوظيفة: "",
+      };
+
+      for (const reportMonth of report.months) {
+        totalExcelRow[`شهر ${reportMonth}`] = Number(
+          reportTotals.monthTotals[String(reportMonth)].toFixed(2),
+        );
+      }
+
+      totalExcelRow["الإجمالي"] = Number(reportTotals.grandTotal.toFixed(2));
+
+      totalExcelRow["الفرق"] =
+        reportTotals.overallDifference === null
+          ? ""
+          : Number(reportTotals.overallDifference.toFixed(2));
+      totalExcelRow["ملاحظات"] = "";
+
+      employeeRows.push(totalExcelRow);
     }
 
-    row['الإجمالي'] = Number(employee.total.toFixed(2))
-    row['المتوسط'] = Number(employee.average.toFixed(2))
-    row['ملاحظات'] = employee.notes || ''
+    const departmentRows = orderedDepartmentSummary.map((department) => ({
+      الإدارة: department.department_name,
+      "عدد الموظفين": department.employees_count,
+      "عدد التقييمات": department.evaluations_count,
+      الإجمالي: Number(department.total.toFixed(2)),
+      المتوسط: Number(department.average.toFixed(2)),
+    }));
 
-    return row
-  })
+    const workbook = XLSX.utils.book_new();
 
-  if (employeeRows.length > 0) {
-    const totalExcelRow: Record<string, string | number> = {
-      م: '',
-      'اسم الموظف': 'الإجمالي',
-      المؤهل: '',
-      الإدارة: '',
-      الوظيفة: ''
+    const employeesSheet = XLSX.utils.json_to_sheet(employeeRows);
+    const departmentsSheet = XLSX.utils.json_to_sheet(departmentRows);
+
+    XLSX.utils.book_append_sheet(workbook, employeesSheet, "تقرير الموظفين");
+    XLSX.utils.book_append_sheet(workbook, departmentsSheet, "ملخص الإدارات");
+
+    const fileName = `KPI_Report_${year}_${fromMonth}_to_${toMonth}.xlsx`;
+
+    XLSX.writeFile(workbook, fileName);
+  }
+
+  function escapeHtml(value: string | number | null | undefined): string {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function formatNumber(value: number | null): string {
+    if (value === null) {
+      return "-";
     }
 
-    for (const reportMonth of report.months) {
-      totalExcelRow[`شهر ${reportMonth}`] = Number(
-        reportTotals.monthTotals[String(reportMonth)].toFixed(2)
-      )
+    return Number(value)
+      .toFixed(2)
+      .replace(/\\.00$/, "");
+  }
+
+  function buildReportPdfHtml(): string {
+    if (!report) {
+      return "";
     }
 
-    totalExcelRow['الإجمالي'] = Number(
-      reportTotals.grandTotal.toFixed(2)
-    )
+    const monthHeaders = report.months
+      .map((monthNumber) => `<th>شهر<br>${monthNumber}</th>`)
+      .join("");
 
-    totalExcelRow['المتوسط'] = Number(
-      reportTotals.overallAverage.toFixed(2)
-    )
-    totalExcelRow['ملاحظات'] = ''
+    const monthColumns = report.months
+      .map(() => '<col style="width: 4.2%" />')
+      .join("");
 
-    employeeRows.push(totalExcelRow)
-  }
+    const employeeRows = orderedReportEmployees
+      .map((employee, index) => {
+        const monthCells = report.months
+          .map((monthNumber) => {
+            const value = employee.month_values[String(monthNumber)];
+            return `<td>${value === null ? "-" : formatNumber(value)}</td>`;
+          })
+          .join("");
 
-  const departmentRows = orderedDepartmentSummary.map((department) => ({
-    الإدارة: department.department_name,
-    'عدد الموظفين': department.employees_count,
-    'عدد التقييمات': department.evaluations_count,
-    الإجمالي: Number(department.total.toFixed(2)),
-    المتوسط: Number(department.average.toFixed(2))
-  }))
+        const difference = getEmployeeDifference(employee);
 
-  const workbook = XLSX.utils.book_new()
-
-  const employeesSheet = XLSX.utils.json_to_sheet(employeeRows)
-  const departmentsSheet = XLSX.utils.json_to_sheet(departmentRows)
-
-  XLSX.utils.book_append_sheet(workbook, employeesSheet, 'تقرير الموظفين')
-  XLSX.utils.book_append_sheet(workbook, departmentsSheet, 'ملخص الإدارات')
-
-  const fileName = `KPI_Report_${year}_${fromMonth}_to_${toMonth}.xlsx`
-
-  XLSX.writeFile(workbook, fileName)
-}
-
-function escapeHtml(value: string | number | null | undefined): string {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;')
-}
-
-function formatNumber(value: number | null): string {
-  if (value === null) {
-    return '-'
-  }
-
-  return Number(value).toFixed(2).replace(/\\.00$/, '')
-}
-
-function buildReportPdfHtml(): string {
-  if (!report) {
-    return ''
-  }
-
-  const monthHeaders = report.months.map((monthNumber) => `<th>شهر<br>${monthNumber}</th>`).join('')
-
-  const monthColumns = report.months.map(() => '<col style="width: 4.2%" />').join('')
-
-  const employeeRows = orderedReportEmployees
-    .map((employee, index) => {
-      const monthCells = report.months
-        .map((monthNumber) => {
-          const value = employee.month_values[String(monthNumber)]
-          return `<td>${value === null ? '-' : formatNumber(value)}</td>`
-        })
-        .join('')
-
-      return `
+        return `
         <tr>
           <td>${index + 1}</td>
           <td class="text-cell">${escapeHtml(employee.employee_name)}</td>
-          <td class="text-cell">${escapeHtml(employee.qualification || '-')}</td>
-          <td class="text-cell">${escapeHtml(employee.department_name || '-')}</td>
-          <td class="text-cell">${escapeHtml(employee.job_title || '-')}</td>
+          <td class="text-cell">${escapeHtml(employee.qualification || "-")}</td>
+          <td class="text-cell">${escapeHtml(employee.department_name || "-")}</td>
+          <td class="text-cell">${escapeHtml(employee.job_title || "-")}</td>
           ${monthCells}
           <td>${formatNumber(employee.total)}</td>
-          <td>${formatNumber(employee.average)}</td>
-          <td class="text-cell">${escapeHtml(employee.notes || '-')}</td>
+          <td>${formatDifference(difference)}</td>
+          <td class="text-cell">${escapeHtml(employee.notes || "-")}</td>
         </tr>
-      `
-    })
-    .join('')
+      `;
+      })
+      .join("");
 
-
-  const totalRow =
-    orderedReportEmployees.length > 0
-      ? `
+    const totalRow =
+      orderedReportEmployees.length > 0
+        ? `
         <tr class="total-row">
           <td colspan="5">الإجمالي</td>
 
@@ -284,21 +335,21 @@ function buildReportPdfHtml(): string {
             .map(
               (reportMonth) =>
                 `<td>${formatNumber(
-                  reportTotals.monthTotals[String(reportMonth)]
-                )}</td>`
+                  reportTotals.monthTotals[String(reportMonth)],
+                )}</td>`,
             )
-            .join('')}
+            .join("")}
 
           <td>${formatNumber(reportTotals.grandTotal)}</td>
-          <td>${formatNumber(reportTotals.overallAverage)}</td>
+          <td>${formatDifference(reportTotals.overallDifference)}</td>
           <td>-</td>
         </tr>
       `
-      : ''
+        : "";
 
-  const summaryRows = orderedDepartmentSummary
-    .map(
-      (department) => `
+    const summaryRows = orderedDepartmentSummary
+      .map(
+        (department) => `
         <tr>
           <td class="text-cell">${escapeHtml(department.department_name)}</td>
           <td>${department.employees_count}</td>
@@ -306,11 +357,11 @@ function buildReportPdfHtml(): string {
           <td>${formatNumber(department.total)}</td>
           <td>${formatNumber(department.average)}</td>
         </tr>
-      `
-    )
-    .join('')
+      `,
+      )
+      .join("");
 
-  return `
+    return `
     <!doctype html>
     <html lang="ar" dir="rtl">
       <head>
@@ -413,7 +464,7 @@ function buildReportPdfHtml(): string {
           <div class="meta">
             السنة: ${escapeHtml(year)}<br />
             من شهر: ${escapeHtml(fromMonth)} إلى شهر: ${escapeHtml(toMonth)}<br />
-            تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}
+            تاريخ الطباعة: ${new Date().toLocaleDateString("ar-EG")}
           </div>
         </div>
 
@@ -426,7 +477,7 @@ function buildReportPdfHtml(): string {
               <th>عدد الموظفين</th>
               <th>عدد التقييمات</th>
               <th>الإجمالي</th>
-              <th>المتوسط</th>
+              <th>الفرق</th>
             </tr>
           </thead>
 
@@ -474,32 +525,33 @@ function buildReportPdfHtml(): string {
         </table>
       </body>
     </html>
-  `
-}
-
-async function exportReportToPdf(): Promise<void> {
-  if (!report) {
-    toast.info('اعرض التقرير الأول قبل حفظ PDF')
-    return
+  `;
   }
 
-  try {
-    const result = await window.api.reports.savePdf({
-      html: buildReportPdfHtml(),
-      fileName: `KPI_Report_${year}_${fromMonth}_to_${toMonth}.pdf`
-    })
-
-    if (result.canceled) {
-      toast.info('تم إلغاء حفظ PDF')
-      return
+  async function exportReportToPdf(): Promise<void> {
+    if (!report) {
+      toast.info("اعرض التقرير الأول قبل حفظ PDF");
+      return;
     }
 
-    toast.success('تم حفظ ملف PDF بنجاح')
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء حفظ PDF'
-    toast.error(errorMessage)
+    try {
+      const result = await window.api.reports.savePdf({
+        html: buildReportPdfHtml(),
+        fileName: `KPI_Report_${year}_${fromMonth}_to_${toMonth}.pdf`,
+      });
+
+      if (result.canceled) {
+        toast.info("تم إلغاء حفظ PDF");
+        return;
+      }
+
+      toast.success("تم حفظ ملف PDF بنجاح");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "حدث خطأ أثناء حفظ PDF";
+      toast.error(errorMessage);
+    }
   }
-}
 
   return (
     <>
@@ -509,28 +561,43 @@ async function exportReportToPdf(): Promise<void> {
         <div className="form-grid">
           <label>
             السنة
-            <input value={year} onChange={(event) => setYear(event.target.value.replace(/\D/g, ''))} />
+            <input
+              value={year}
+              onChange={(event) =>
+                setYear(event.target.value.replace(/\D/g, ""))
+              }
+            />
           </label>
 
           <label>
             من شهر
-            <select value={fromMonth} onChange={(event) => setFromMonth(event.target.value)}>
-              {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
-                <option key={month} value={month}>
-                  {month}
-                </option>
-              ))}
+            <select
+              value={fromMonth}
+              onChange={(event) => setFromMonth(event.target.value)}
+            >
+              {Array.from({ length: 12 }, (_, index) => index + 1).map(
+                (month) => (
+                  <option key={month} value={month}>
+                    {month}
+                  </option>
+                ),
+              )}
             </select>
           </label>
 
           <label>
             إلى شهر
-            <select value={toMonth} onChange={(event) => setToMonth(event.target.value)}>
-              {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
-                <option key={month} value={month}>
-                  {month}
-                </option>
-              ))}
+            <select
+              value={toMonth}
+              onChange={(event) => setToMonth(event.target.value)}
+            >
+              {Array.from({ length: 12 }, (_, index) => index + 1).map(
+                (month) => (
+                  <option key={month} value={month}>
+                    {month}
+                  </option>
+                ),
+              )}
             </select>
           </label>
 
@@ -539,14 +606,14 @@ async function exportReportToPdf(): Promise<void> {
             <select
               value={departmentId}
               onChange={(event) => {
-                setDepartmentId(event.target.value)
-                setEmployeeId('')
+                setDepartmentId(event.target.value);
+                setEmployeeId("");
               }}
             >
               <option value="">كل الإدارات</option>
               {departmentOptions.map((department) => (
                 <option key={department.id} value={department.id}>
-                  {'— '.repeat(department.level)}
+                  {"— ".repeat(department.level)}
                   {department.name}
                 </option>
               ))}
@@ -555,7 +622,10 @@ async function exportReportToPdf(): Promise<void> {
 
           <label>
             الموظف
-            <select value={employeeId} onChange={(event) => setEmployeeId(event.target.value)}>
+            <select
+              value={employeeId}
+              onChange={(event) => setEmployeeId(event.target.value)}
+            >
               <option value="">كل الموظفين</option>
               {filteredEmployees.map((employee) => (
                 <option key={employee.id} value={employee.id}>
@@ -567,19 +637,30 @@ async function exportReportToPdf(): Promise<void> {
         </div>
 
         <div className="actions-row">
-          <button className="primary-button" disabled={isLoading} onClick={generateReport}>
-            {isLoading ? 'جاري إنشاء التقرير...' : 'عرض التقرير'}
+          <button
+            className="primary-button"
+            disabled={isLoading}
+            onClick={generateReport}
+          >
+            {isLoading ? "جاري إنشاء التقرير..." : "عرض التقرير"}
           </button>
 
-          <button className="secondary-button" disabled={!report} onClick={exportReportToExcel}>
+          <button
+            className="secondary-button"
+            disabled={!report}
+            onClick={exportReportToExcel}
+          >
             تصدير Excel
           </button>
 
-          <button className="secondary-button" disabled={!report} onClick={exportReportToPdf}>
+          <button
+            className="secondary-button"
+            disabled={!report}
+            onClick={exportReportToPdf}
+          >
             حفظ PDF
           </button>
         </div>
-
       </section>
 
       {report && (
@@ -592,7 +673,10 @@ async function exportReportToPdf(): Promise<void> {
 
             <div className="report-summary-grid">
               {orderedDepartmentSummary.map((department) => (
-                <div className="summary-card" key={String(department.department_id)}>
+                <div
+                  className="summary-card"
+                  key={String(department.department_id)}
+                >
                   <h3>{department.department_name}</h3>
                   <p>عدد الموظفين: {department.employees_count}</p>
                   <p>عدد التقييمات: {department.evaluations_count}</p>
@@ -609,8 +693,36 @@ async function exportReportToPdf(): Promise<void> {
               <span>عدد الموظفين: {orderedReportEmployees.length}</span>
             </div>
 
-            <div className="table-wrapper">
-              <table>
+            <div className="table-wrapper report-table-wrapper">
+              <table
+                className={`report-employees-table ${
+                  report.months.length <= 3
+                    ? "report-table-large"
+                    : report.months.length <= 7
+                      ? "report-table-medium"
+                      : "report-table-compact"
+                }`}
+              >
+                <colgroup>
+                  <col style={{ width: "2.5%" }} />
+                  <col style={{ width: "11%" }} />
+                  <col style={{ width: "7%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "9%" }} />
+
+                  {report.months.map((month) => (
+                    <col
+                      key={month}
+                      style={{
+                        width: `${Math.min(6, 40 / report.months.length)}%`,
+                      }}
+                    />
+                  ))}
+
+                  <col style={{ width: "5%" }} />
+                  <col style={{ width: "5%" }} />
+                  <col style={{ width: "12.5%" }} />
+                </colgroup>
                 <thead>
                   <tr>
                     <th>م</th>
@@ -622,7 +734,7 @@ async function exportReportToPdf(): Promise<void> {
                       <th key={month}>شهر {month}</th>
                     ))}
                     <th>الإجمالي</th>
-                    <th>المتوسط</th>
+                    <th>الفرق</th>
                     <th>ملاحظات</th>
                   </tr>
                 </thead>
@@ -630,54 +742,62 @@ async function exportReportToPdf(): Promise<void> {
                 <tbody>
                   {report.employees.length === 0 ? (
                     <tr>
-                      <td colSpan={report.months.length + 8}>لا توجد بيانات في هذا التقرير</td>
+                      <td colSpan={report.months.length + 8}>
+                        لا توجد بيانات في هذا التقرير
+                      </td>
                     </tr>
                   ) : (
                     orderedReportEmployees.map((employee, index) => (
                       <tr key={employee.employee_id}>
                         <td>{index + 1}</td>
                         <td>{employee.employee_name}</td>
-                        <td>{employee.qualification || '-'}</td>
-                        <td>{employee.department_name || '-'}</td>
-                        <td>{employee.job_title || '-'}</td>
+                        <td>{employee.qualification || "-"}</td>
+                        <td>{employee.department_name || "-"}</td>
+                        <td>{employee.job_title || "-"}</td>
 
                         {report.months.map((month) => (
                           <td key={month}>
                             {employee.month_values[String(month)] === null
-                              ? '-'
+                              ? "-"
                               : employee.month_values[String(month)]}
                           </td>
                         ))}
 
                         <td>{employee.total.toFixed(2)}</td>
-                        <td>{employee.average.toFixed(2)}</td>
-                        <td>{employee.notes || '-'}</td>
+                        <td>
+                          {formatDifference(getEmployeeDifference(employee))}
+                        </td>
+                        <td>{employee.notes || "-"}</td>
                       </tr>
                     ))
                   )}
                 </tbody>
-              {orderedReportEmployees.length > 0 && (
-                <tfoot>
-                  <tr className="report-total-row">
-                    <td colSpan={5}>الإجمالي</td>
+                {orderedReportEmployees.length > 0 && (
+                  <tfoot>
+                    <tr className="report-total-row">
+                      <td colSpan={5}>الإجمالي</td>
 
-                    {report.months.map((reportMonth) => (
-                      <td key={reportMonth}>
-                        {reportTotals.monthTotals[String(reportMonth)].toFixed(2)}
+                      {report.months.map((reportMonth) => (
+                        <td key={reportMonth}>
+                          {reportTotals.monthTotals[
+                            String(reportMonth)
+                          ].toFixed(2)}
+                        </td>
+                      ))}
+
+                      <td>{reportTotals.grandTotal.toFixed(2)}</td>
+                      <td>
+                        {formatDifference(reportTotals.overallDifference)}
                       </td>
-                    ))}
-
-                    <td>{reportTotals.grandTotal.toFixed(2)}</td>
-                    <td>{reportTotals.overallAverage.toFixed(2)}</td>
-                    <td>-</td>
-                  </tr>
-                </tfoot>
-              )}
+                      <td>-</td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           </section>
         </>
       )}
     </>
-  )
+  );
 }
