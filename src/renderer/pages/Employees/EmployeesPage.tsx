@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import type { Department, Employee } from '../../types/api';
 import { toast } from '../../utils/toast';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import {
   flattenDepartmentTree,
@@ -290,8 +290,15 @@ export default function EmployeesPage(): ReactElement {
         includeInactive: true,
       });
 
-      const selectedEmployees = allEmployees.filter((employee) =>
-        isActive ? employee.active === 1 : employee.active !== 1,
+      const exportDepartments = await window.api.departments.list({
+        includeInactive: true,
+      });
+
+      const selectedEmployees = sortEmployeeListByDepartmentTree(
+        allEmployees.filter((employee) =>
+          isActive ? employee.active === 1 : employee.active !== 1,
+        ),
+        exportDepartments,
       );
 
       if (selectedEmployees.length === 0) {
@@ -314,20 +321,82 @@ export default function EmployeesPage(): ReactElement {
         const workbook = XLSX.utils.book_new();
         const sheet = XLSX.utils.json_to_sheet(excelRows);
 
+        // جعل ورقة Excel من اليمين إلى الشمال
+        workbook.Workbook = {
+          Views: [{ RTL: true }],
+        };
+
+        // عرض الأعمدة السبعة بعد حذف الترتيب والحالة
         sheet['!cols'] = [
-          { wch: 6 },
-          { wch: 28 },
-          { wch: 19 },
-          { wch: 22 },
-          { wch: 22 },
-          { wch: 24 },
-          { wch: 12 },
-          { wch: 12 },
-          { wch: 45 },
+          { wch: 7 }, // م
+          { wch: 40 }, // اسم الموظف
+          { wch: 25 }, // الرقم القومي
+          { wch: 28 }, // المؤهل
+          { wch: 28 }, // الوظيفة
+          { wch: 30 }, // الإدارة
+          { wch: 55 }, // ملاحظات
         ];
 
+        // ارتفاع الصفوف مع مراعاة الملاحظات متعددة الأسطر
+        sheet['!rows'] = [
+          { hpt: 34 },
+          ...selectedEmployees.map((employee) => ({
+            hpt: Math.max(
+              34,
+              Math.min(160, (employee.notes?.split(/\r?\n/).length || 1) * 28),
+            ),
+          })),
+        ];
+
+        // تنسيق جميع الخلايا
+        if (sheet['!ref']) {
+          const range = XLSX.utils.decode_range(sheet['!ref']);
+
+          for (let row = range.s.r; row <= range.e.r; row++) {
+            for (let col = range.s.c; col <= range.e.c; col++) {
+              const address = XLSX.utils.encode_cell({
+                r: row,
+                c: col,
+              });
+
+              const cell = sheet[address];
+              if (!cell) continue;
+
+              cell.s = {
+                font: {
+                  name: 'Arial',
+                  sz: 16,
+                  bold: row === 0,
+                  color: { rgb: '111827' },
+                },
+                alignment: {
+                  horizontal: 'center',
+                  vertical: 'center',
+                  wrapText: true,
+                },
+                border: {
+                  bottom: {
+                    style: 'thin',
+                    color: { rgb: 'D1D5DB' },
+                  },
+                },
+                ...(row === 0
+                  ? {
+                      fill: {
+                        fgColor: { rgb: 'DCEAF7' },
+                      },
+                    }
+                  : {}),
+              };
+            }
+          }
+        }
+
         XLSX.utils.book_append_sheet(workbook, sheet, 'الموظفون');
-        XLSX.writeFile(workbook, `${fileName}.xlsx`);
+
+        XLSX.writeFile(workbook, `${fileName}.xlsx`, {
+          cellStyles: true,
+        });
 
         toast.success('تم تصدير ملف Excel');
         return;
@@ -395,7 +464,7 @@ export default function EmployeesPage(): ReactElement {
             font-size: 9px;
             line-height: 1.4;
             text-align: center;
-            vertical-align: top;
+            vertical-align: middle;
             overflow-wrap: anywhere;
           }
 
@@ -406,7 +475,7 @@ export default function EmployeesPage(): ReactElement {
 
           .notes {
             white-space: pre-line;
-            text-align: right;
+            text-align: center;
           }
 
           thead {
