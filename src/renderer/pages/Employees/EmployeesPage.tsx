@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import type { Department, Employee } from '../../types/api';
 import { toast } from '../../utils/toast';
+import * as XLSX from 'xlsx';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import {
   flattenDepartmentTree,
@@ -24,6 +25,10 @@ export default function EmployeesPage(): ReactElement {
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [employeeDepartmentFilter, setEmployeeDepartmentFilter] = useState('');
   const [isSavingEmployee, setIsSavingEmployee] = useState(false);
+  const [employeeExportFormat, setEmployeeExportFormat] = useState<
+    'pdf' | 'excel'
+  >('pdf');
+  const [isExportingEmployees, setIsExportingEmployees] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(
     null,
   );
@@ -259,6 +264,221 @@ export default function EmployeesPage(): ReactElement {
     }
   }
 
+  function escapeEmployeeExportHtml(
+    value: string | number | null | undefined,
+  ): string {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  async function exportEmployees(status: 'active' | 'inactive'): Promise<void> {
+    if (isExportingEmployees) return;
+
+    const isActive = status === 'active';
+    const title = isActive ? 'كشف الموظفين المفعلين' : 'كشف الموظفين المعطلين';
+    const fileName = isActive ? 'Active_Employees' : 'Inactive_Employees';
+
+    try {
+      setIsExportingEmployees(true);
+
+      // جلب جميع الموظفين بصرف النظر عن فلتر الشاشة
+      const allEmployees = await window.api.employees.list({
+        includeInactive: true,
+      });
+
+      const selectedEmployees = allEmployees.filter((employee) =>
+        isActive ? employee.active === 1 : employee.active !== 1,
+      );
+
+      if (selectedEmployees.length === 0) {
+        toast.warning('لا يوجد موظفون في هذه القائمة');
+        return;
+      }
+
+      // تصدير Excel
+      if (employeeExportFormat === 'excel') {
+        const excelRows = selectedEmployees.map((employee, index) => ({
+          م: index + 1,
+          'اسم الموظف': employee.name,
+          'الرقم القومي': employee.national_id || '',
+          المؤهل: employee.qualification || '',
+          الوظيفة: employee.job_title || '',
+          الإدارة: employee.department_name || 'بدون إدارة',
+          ملاحظات: employee.notes || '',
+        }));
+
+        const workbook = XLSX.utils.book_new();
+        const sheet = XLSX.utils.json_to_sheet(excelRows);
+
+        sheet['!cols'] = [
+          { wch: 6 },
+          { wch: 28 },
+          { wch: 19 },
+          { wch: 22 },
+          { wch: 22 },
+          { wch: 24 },
+          { wch: 12 },
+          { wch: 12 },
+          { wch: 45 },
+        ];
+
+        XLSX.utils.book_append_sheet(workbook, sheet, 'الموظفون');
+        XLSX.writeFile(workbook, `${fileName}.xlsx`);
+
+        toast.success('تم تصدير ملف Excel');
+        return;
+      }
+
+      // تصدير PDF
+      const rowsHtml = selectedEmployees
+        .map(
+          (employee, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${escapeEmployeeExportHtml(employee.name)}</td>
+        <td dir="ltr">${escapeEmployeeExportHtml(employee.national_id || '-')}</td>
+        <td>${escapeEmployeeExportHtml(employee.qualification || '-')}</td>
+        <td>${escapeEmployeeExportHtml(employee.job_title || '-')}</td>
+        <td>${escapeEmployeeExportHtml(employee.department_name || 'بدون إدارة')}</td>
+        <td class="notes">${escapeEmployeeExportHtml(employee.notes || '-')}</td>
+      </tr>
+    `,
+        )
+        .join('');
+
+      const html = `
+      <!doctype html>
+      <html lang="ar" dir="rtl">
+      <head>
+        <meta charset="UTF-8" />
+        <title>${title}</title>
+        <style>
+          @page {
+            size: A4 landscape;
+            margin: 8mm;
+          }
+
+          body {
+            font-family: Tahoma, Arial, sans-serif;
+            direction: rtl;
+            color: #111827;
+            background: white;
+          }
+
+          h1 {
+            text-align: center;
+            font-size: 20px;
+            margin-bottom: 12px;
+          }
+
+          .info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            font-size: 12px;
+            font-weight: bold;
+          }
+
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+          }
+
+          th, td {
+            border: 1px solid #777;
+            padding: 6px 3px;
+            font-size: 9px;
+            line-height: 1.4;
+            text-align: center;
+            vertical-align: top;
+            overflow-wrap: anywhere;
+          }
+
+          th {
+            background: #e5e7eb;
+            font-weight: bold;
+          }
+
+          .notes {
+            white-space: pre-line;
+            text-align: right;
+          }
+
+          thead {
+            display: table-header-group;
+          }
+
+          tbody tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+        </style>
+      </head>
+      <body>
+        <h1>${title}</h1>
+
+        <div class="info">
+          <span>عدد الموظفين: ${selectedEmployees.length}</span>
+          <span>تاريخ الاستخراج: ${new Date().toLocaleDateString('ar-EG')}</span>
+        </div>
+
+        <table>
+          <colgroup>
+            <col style="width: 3%" />
+            <col style="width: 15%" />
+            <col style="width: 14%" />
+            <col style="width: 11%" />
+            <col style="width: 12%" />
+            <col style="width: 12%" />
+            <col style="width: 6%" />
+            <col style="width: 7%" />
+            <col style="width: 20%" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th>م</th>
+              <th>اسم الموظف</th>
+              <th>الرقم القومي</th>
+              <th>المؤهل</th>
+              <th>الوظيفة</th>
+              <th>الإدارة</th>
+              <th>ملاحظات</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+      const result = await window.api.reports.savePdf({
+        html,
+        fileName: `${fileName}.pdf`,
+      });
+
+      if (result.canceled) {
+        toast.info('تم إلغاء حفظ PDF');
+        return;
+      }
+
+      toast.success('تم حفظ ملف PDF بنجاح');
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'حدث خطأ أثناء التصدير';
+
+      toast.error(message);
+    } finally {
+      setIsExportingEmployees(false);
+    }
+  }
+
   return (
     <>
       <section
@@ -430,6 +650,40 @@ export default function EmployeesPage(): ReactElement {
           />
           إظهار غير المفعلين
         </label>
+
+        <div
+          className="actions-row"
+          style={{ alignItems: 'end', marginBottom: 16 }}
+        >
+          <label style={{ minWidth: 150 }}>
+            صيغة التصدير
+            <select
+              value={employeeExportFormat}
+              onChange={(event) =>
+                setEmployeeExportFormat(event.target.value as 'pdf' | 'excel')
+              }
+            >
+              <option value="pdf">PDF</option>
+              <option value="excel">Excel</option>
+            </select>
+          </label>
+
+          <button
+            className="primary-button"
+            disabled={isExportingEmployees}
+            onClick={() => void exportEmployees('active')}
+          >
+            تصدير الموظفين المفعلين
+          </button>
+
+          <button
+            className="secondary-button"
+            disabled={isExportingEmployees}
+            onClick={() => void exportEmployees('inactive')}
+          >
+            تصدير الموظفين المعطلين
+          </button>
+        </div>
 
         <table>
           <thead>
