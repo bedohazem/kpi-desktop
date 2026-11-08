@@ -1,4 +1,7 @@
-import { getDb } from '../db';
+import { getDb, getDbPath } from '../db';
+import { app } from 'electron';
+import fs from 'node:fs';
+import path from 'node:path';
 import type { MutationResult } from '../../types/common';
 import type {
   CopyPreviousMonthInput,
@@ -6,6 +9,8 @@ import type {
   EvaluationEmployeeRow,
   EvaluationFilters,
   SaveMonthlyEvaluationsInput,
+  ResetMonthInput,
+  ResetMonthResult,
 } from '../../types/evaluations';
 
 function validateMonthYear(month: number, year: number): void {
@@ -208,5 +213,60 @@ export function copyPreviousMonthEvaluations(
   return {
     success: true,
     copied: result.changes,
+  };
+}
+
+export async function resetMonthlyEvaluations(
+  input: ResetMonthInput,
+): Promise<ResetMonthResult> {
+  validateMonthYear(input.month, input.year);
+
+  const db = getDb();
+
+  const existing = db
+    .prepare(
+      `
+    SELECT COUNT(*) AS count
+    FROM monthly_evaluations
+    WHERE month = @month AND year = @year
+  `,
+    )
+    .get({
+      month: input.month,
+      year: input.year,
+    }) as { count: number };
+
+  if (existing.count === 0) {
+    return { deleted: 0, backupPath: null };
+  }
+
+  // نسخة أمان إجبارية قبل مسح أي تقييم
+  const backupDirectory = path.join(path.dirname(getDbPath()), 'reset-backups');
+
+  fs.mkdirSync(backupDirectory, { recursive: true });
+
+  const backupPath = path.join(
+    backupDirectory,
+    `KPI_Before_Reset_${input.year}_${String(input.month).padStart(2, '0')}_${Date.now()}.sqlite`,
+  );
+
+  await db.backup(backupPath);
+
+  // مسح تقييمات الشهر المحدد فقط
+  const result = db
+    .prepare(
+      `
+    DELETE FROM monthly_evaluations
+    WHERE month = @month AND year = @year
+  `,
+    )
+    .run({
+      month: input.month,
+      year: input.year,
+    });
+
+  return {
+    deleted: result.changes,
+    backupPath,
   };
 }

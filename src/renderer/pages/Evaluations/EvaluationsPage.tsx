@@ -40,6 +40,12 @@ export default function EvaluationsPage(): ReactElement {
     {},
   );
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [resetTarget, setResetTarget] = useState<{
+    month: number;
+    year: number;
+  } | null>(null);
+
+  const [isResettingMonth, setIsResettingMonth] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const departmentOptions = useMemo(
@@ -183,6 +189,65 @@ export default function EvaluationsPage(): ReactElement {
       const errorMessage =
         error instanceof Error ? error.message : 'حدث خطأ أثناء النسخ';
       toast.error(errorMessage);
+    }
+  }
+
+  function requestResetMonth(): void {
+    if (departmentId) {
+      toast.warning('اختار كل الإدارات لتصفير الشهر بالكامل');
+      return;
+    }
+
+    const selectedMonth = Number(month);
+    const selectedYear = Number(year);
+
+    if (
+      !Number.isInteger(selectedMonth) ||
+      selectedMonth < 1 ||
+      selectedMonth > 12 ||
+      !Number.isInteger(selectedYear) ||
+      selectedYear < 2000 ||
+      selectedYear > 2100
+    ) {
+      toast.error('اختار شهر وسنة صحيحين');
+      return;
+    }
+
+    setResetTarget({
+      month: selectedMonth,
+      year: selectedYear,
+    });
+  }
+
+  async function confirmResetMonth(): Promise<void> {
+    if (!resetTarget || isResettingMonth) return;
+
+    const target = resetTarget;
+    setResetTarget(null);
+
+    try {
+      setIsResettingMonth(true);
+
+      const result = await window.api.evaluations.resetMonth(target);
+
+      setRows([]);
+
+      if (result.deleted === 0) {
+        toast.info('لا توجد تقييمات محفوظة في هذا الشهر');
+        return;
+      }
+
+      toast.success(`تم تصفير ${result.deleted} تقييم بنجاح`);
+      toast.info(
+        'تم حفظ نسخة أمان قبل التصفير. اضغط تحميل الموظفين لتحديث الجدول',
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'حدث خطأ أثناء تصفير الشهر';
+
+      toast.error(message);
+    } finally {
+      setIsResettingMonth(false);
     }
   }
 
@@ -537,6 +602,14 @@ export default function EvaluationsPage(): ReactElement {
           >
             {isExportingPdf ? 'جاري إنشاء PDF...' : 'قائمة تقييمات الشهر PDF'}
           </button>
+
+          <button
+            className="danger-button"
+            disabled={isResettingMonth || isSaving || isLoading}
+            onClick={requestResetMonth}
+          >
+            {isResettingMonth ? 'جاري تصفير الشهر...' : 'تصفير تقييمات الشهر'}
+          </button>
         </div>
       </section>
 
@@ -694,6 +767,19 @@ export default function EvaluationsPage(): ReactElement {
           void copyPreviousMonth();
         }}
         onCancel={() => setCopyDialogOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(resetTarget)}
+        title="تصفير تقييمات الشهر"
+        message={`تحذير: سيتم مسح جميع التقييمات المحفوظة لشهر ${resetTarget?.month} سنة ${resetTarget?.year} في كل الإدارات، بما فيها تقييمات الموظفين المعطّلين. سيتم إنشاء نسخة أمان أولًا. هل أنت متأكد؟`}
+        confirmText="نعم، تصفير الشهر"
+        cancelText="إلغاء"
+        danger
+        onConfirm={() => {
+          void confirmResetMonth();
+        }}
+        onCancel={() => setResetTarget(null)}
       />
     </>
   );

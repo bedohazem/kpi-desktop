@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('api', {
     saveMonth: (input) => ipcRenderer.invoke('evaluations:save-month', input),
     copyPreviousMonth: (input) =>
       ipcRenderer.invoke('evaluations:copy-previous-month', input),
+    resetMonth: (input) => ipcRenderer.invoke('evaluations:reset-month', input),
   },
 
   reports: {

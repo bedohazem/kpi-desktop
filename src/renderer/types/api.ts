@@ -127,6 +127,16 @@ export type CopyPreviousMonthResult = {
   copied: number;
 };
 
+export type ResetMonthInput = {
+  month: number;
+  year: number;
+};
+
+export type ResetMonthResult = {
+  deleted: number;
+  backupPath: string | null;
+};
+
 export type ReportFilters = {
   year: number;
   from_month: number;
@@ -251,6 +261,7 @@ export type AppApi = {
     copyPreviousMonth: (
       input: CopyPreviousMonthInput,
     ) => Promise<CopyPreviousMonthResult>;
+    resetMonth: (input: ResetMonthInput) => Promise<ResetMonthResult>;
   };
   reports: {
     generate: (filters: ReportFilters) => Promise<ReportsResult>;

@@ -3,6 +3,7 @@ import {
   copyPreviousMonthEvaluations,
   listEvaluationEmployees,
   saveMonthlyEvaluations,
+  resetMonthlyEvaluations,
 } from '../database/repositories/evaluations.repo';
 import type { MutationResult } from '../types/common';
 import type {
@@ -11,6 +12,8 @@ import type {
   EvaluationEmployeeRow,
   EvaluationFilters,
   SaveMonthlyEvaluationsInput,
+  ResetMonthInput,
+  ResetMonthResult,
 } from '../types/evaluations';
 
 export function registerEvaluationsIpc(): void {
@@ -18,6 +21,13 @@ export function registerEvaluationsIpc(): void {
     'evaluations:list-employees',
     (_event, filters: EvaluationFilters): EvaluationEmployeeRow[] => {
       return listEvaluationEmployees(filters);
+    },
+  );
+
+  ipcMain.handle(
+    'evaluations:reset-month',
+    async (_event, input: ResetMonthInput): Promise<ResetMonthResult> => {
+      return resetMonthlyEvaluations(input);
     },
   );
 

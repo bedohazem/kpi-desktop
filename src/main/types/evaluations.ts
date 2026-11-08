@@ -39,3 +39,13 @@ export type CopyPreviousMonthResult = {
   success: boolean;
   copied: number;
 };
+
+export type ResetMonthInput = {
+  month: number;
+  year: number;
+};
+
+export type ResetMonthResult = {
+  deleted: number;
+  backupPath: string | null;
+};
