@@ -43,6 +43,7 @@ export type CopyPreviousMonthResult = {
 export type ResetMonthInput = {
   month: number;
   year: number;
+  department_id: number | null;
 };
 
 export type ResetMonthResult = {

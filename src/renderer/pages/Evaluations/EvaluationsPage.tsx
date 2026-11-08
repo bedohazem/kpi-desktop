@@ -43,6 +43,7 @@ export default function EvaluationsPage(): ReactElement {
   const [resetTarget, setResetTarget] = useState<{
     month: number;
     year: number;
+    department_id: number | null;
   } | null>(null);
 
   const [isResettingMonth, setIsResettingMonth] = useState(false);
@@ -193,11 +194,6 @@ export default function EvaluationsPage(): ReactElement {
   }
 
   function requestResetMonth(): void {
-    if (departmentId) {
-      toast.warning('اختار كل الإدارات لتصفير الشهر بالكامل');
-      return;
-    }
-
     const selectedMonth = Number(month);
     const selectedYear = Number(year);
 
@@ -213,9 +209,22 @@ export default function EvaluationsPage(): ReactElement {
       return;
     }
 
+    const selectedDepartmentId = departmentId ? Number(departmentId) : null;
+
+    if (
+      selectedDepartmentId !== null &&
+      !departmentOptions.some(
+        (department) => department.id === selectedDepartmentId,
+      )
+    ) {
+      toast.error('اختار إدارة صحيحة');
+      return;
+    }
+
     setResetTarget({
       month: selectedMonth,
       year: selectedYear,
+      department_id: selectedDepartmentId,
     });
   }
 
@@ -608,7 +617,11 @@ export default function EvaluationsPage(): ReactElement {
             disabled={isResettingMonth || isSaving || isLoading}
             onClick={requestResetMonth}
           >
-            {isResettingMonth ? 'جاري تصفير الشهر...' : 'تصفير تقييمات الشهر'}
+            {isResettingMonth
+              ? 'جاري التصفير...'
+              : departmentId
+                ? 'تصفير تقييمات الإدارة للشهر'
+                : 'تصفير تقييمات الشهر بالكامل'}
           </button>
         </div>
       </section>
@@ -771,9 +784,21 @@ export default function EvaluationsPage(): ReactElement {
 
       <ConfirmDialog
         open={Boolean(resetTarget)}
-        title="تصفير تقييمات الشهر"
-        message={`تحذير: سيتم مسح جميع التقييمات المحفوظة لشهر ${resetTarget?.month} سنة ${resetTarget?.year} في كل الإدارات، بما فيها تقييمات الموظفين المعطّلين. سيتم إنشاء نسخة أمان أولًا. هل أنت متأكد؟`}
-        confirmText="نعم، تصفير الشهر"
+        title="تأكيد تصفير التقييمات"
+        message={
+          resetTarget
+            ? `تحذير: سيتم حذف التقييمات المحفوظة لشهر ${resetTarget.month} سنة ${resetTarget.year} ${
+                resetTarget.department_id === null
+                  ? 'من جميع الإدارات'
+                  : `من إدارة "${
+                      departmentOptions.find(
+                        (d) => d.id === resetTarget.department_id,
+                      )?.name || 'المختارة'
+                    }" وجميع الإدارات التابعة لها`
+              }، بما فيها تقييمات الموظفين المعطّلين. سيتم إنشاء نسخة أمان أولًا. هل أنت متأكد؟`
+            : ''
+        }
+        confirmText="نعم، تصفير التقييمات"
         cancelText="إلغاء"
         danger
         onConfirm={() => {

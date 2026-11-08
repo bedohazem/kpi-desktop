@@ -222,48 +222,95 @@ export async function resetMonthlyEvaluations(
   validateMonthYear(input.month, input.year);
 
   const db = getDb();
+  const departmentId = input.department_id;
+
+  // التأكد من صحة الإدارة المختارة
+  if (departmentId !== null) {
+    if (!Number.isInteger(departmentId) || departmentId <= 0) {
+      throw new Error('الإدارة المختارة غير صحيحة');
+    }
+
+    const department = db
+      .prepare('SELECT id FROM departments WHERE id = ?')
+      .get(departmentId);
+
+    if (!department) {
+      throw new Error('الإدارة المختارة غير موجودة');
+    }
+  }
+
+  const params = {
+    month: input.month,
+    year: input.year,
+    department_id: departmentId,
+  };
+
+  // نفس الشرط يُستخدم للعد والحذف
+  const scopeWhere = `
+    WHERE month = @month
+      AND year = @year
+      AND (
+        @department_id IS NULL
+        OR employee_id IN (
+          SELECT e.id
+          FROM employees e
+          WHERE e.department_id IN (
+            WITH RECURSIVE selected_departments(id) AS (
+              SELECT id
+              FROM departments
+              WHERE id = @department_id
+
+              UNION
+
+              SELECT d.id
+              FROM departments d
+              INNER JOIN selected_departments sd
+                ON sd.id = d.parent_id
+            )
+            SELECT id FROM selected_departments
+          )
+        )
+      )
+  `;
 
   const existing = db
     .prepare(
       `
-    SELECT COUNT(*) AS count
-    FROM monthly_evaluations
-    WHERE month = @month AND year = @year
-  `,
+      SELECT COUNT(*) AS count
+      FROM monthly_evaluations
+      ${scopeWhere}
+    `,
     )
-    .get({
-      month: input.month,
-      year: input.year,
-    }) as { count: number };
+    .get(params) as { count: number };
 
   if (existing.count === 0) {
-    return { deleted: 0, backupPath: null };
+    return {
+      deleted: 0,
+      backupPath: null,
+    };
   }
 
-  // نسخة أمان إجبارية قبل مسح أي تقييم
+  // نسخة أمان من قاعدة البيانات كاملة قبل الحذف
   const backupDirectory = path.join(path.dirname(getDbPath()), 'reset-backups');
 
   fs.mkdirSync(backupDirectory, { recursive: true });
 
   const backupPath = path.join(
     backupDirectory,
-    `KPI_Before_Reset_${input.year}_${String(input.month).padStart(2, '0')}_${Date.now()}.sqlite`,
+    `KPI_Before_Reset_${input.year}_${String(input.month).padStart(2, '0')}_${departmentId ?? 'ALL'}_${Date.now()}.sqlite`,
   );
 
   await db.backup(backupPath);
 
-  // مسح تقييمات الشهر المحدد فقط
+  // حذف التقييمات داخل النطاق المختار فقط
   const result = db
     .prepare(
       `
-    DELETE FROM monthly_evaluations
-    WHERE month = @month AND year = @year
-  `,
+      DELETE FROM monthly_evaluations
+      ${scopeWhere}
+    `,
     )
-    .run({
-      month: input.month,
-      year: input.year,
-    });
+    .run(params);
 
   return {
     deleted: result.changes,
