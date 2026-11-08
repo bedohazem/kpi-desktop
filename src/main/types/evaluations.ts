@@ -1,5 +1,6 @@
 export type EvaluationEmployeeRow = {
   employee_id: number;
+  active: number;
   employee_name: string;
   job_title: string | null;
   department_id: number | null;

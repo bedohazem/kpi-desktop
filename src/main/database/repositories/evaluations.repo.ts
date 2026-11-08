@@ -30,6 +30,7 @@ export function listEvaluationEmployees(
       `
       SELECT
         e.id AS employee_id,
+        e.active AS active,
         e.name AS employee_name,
         e.qualification,
         e.job_title,
@@ -45,7 +46,7 @@ export function listEvaluationEmployees(
         ON me.employee_id = e.id
        AND me.month = @month
        AND me.year = @year
-      WHERE e.active = 1
+      WHERE (e.active = 1 OR me.id IS NOT NULL)
         AND (
           @department_id IS NULL
           OR e.department_id IN (
@@ -88,6 +89,10 @@ export function saveMonthlyEvaluations(
 
   const db = getDb();
 
+  const activeEmployeeStatement = db.prepare(
+    'SELECT active FROM employees WHERE id = ?',
+  );
+
   const saveStatement = db.prepare(
     `
     INSERT INTO monthly_evaluations (
@@ -114,6 +119,12 @@ export function saveMonthlyEvaluations(
 
   const transaction = db.transaction(() => {
     for (const item of input.items) {
+      const employee = activeEmployeeStatement.get(item.employee_id) as
+        { active: number } | undefined;
+
+      if (!employee || employee.active !== 1) {
+        throw new Error('لا يمكن حفظ تقييم موظف معطّل');
+      }
       const evaluationValue = Number(item.evaluation_value);
 
       if (!Number.isFinite(evaluationValue) || evaluationValue < 0) {

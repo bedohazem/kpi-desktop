@@ -133,8 +133,10 @@ export default function EvaluationsPage(): ReactElement {
   async function saveEvaluations(): Promise<void> {
     toast.info('جاري حفظ التقييمات...');
 
-    if (rows.length === 0) {
-      toast.warning('لا توجد بيانات للحفظ');
+    const editableRows = rows.filter((row) => row.active === 1);
+
+    if (editableRows.length === 0) {
+      toast.warning('لا توجد تقييمات نشطة للحفظ');
       return;
     }
 
@@ -144,7 +146,7 @@ export default function EvaluationsPage(): ReactElement {
       await window.api.evaluations.saveMonth({
         month: Number(month),
         year: Number(year),
-        items: rows.map((row) => ({
+        items: editableRows.map((row) => ({
           employee_id: row.employee_id,
           evaluation_value: row.evaluationValueInput
             ? Number(row.evaluationValueInput)
@@ -222,7 +224,9 @@ export default function EvaluationsPage(): ReactElement {
   }
 
   function focusNextEvaluationInput(currentIndex: number): void {
-    const nextRow = visibleEvaluationRows[currentIndex + 1];
+    const nextRow = visibleEvaluationRows
+      .slice(currentIndex + 1)
+      .find((row) => row.active === 1);
 
     if (!nextRow) {
       return;
@@ -520,7 +524,7 @@ export default function EvaluationsPage(): ReactElement {
 
           <button
             className="primary-button"
-            disabled={isSaving || rows.length === 0}
+            disabled={isSaving || !rows.some((row) => row.active === 1)}
             onClick={saveEvaluations}
           >
             {isSaving ? 'جاري الحفظ...' : 'حفظ التقييمات'}
@@ -626,12 +630,26 @@ export default function EvaluationsPage(): ReactElement {
                 visibleEvaluationRows.map((row, index) => (
                   <tr key={row.employee_id}>
                     <td>{index + 1}</td>
-                    <td>{row.employee_name}</td>
+                    <td>
+                      {row.employee_name}
+                      {row.active !== 1 && (
+                        <small
+                          style={{
+                            display: 'block',
+                            color: '#b45309',
+                            fontWeight: 700,
+                          }}
+                        >
+                          معطّل - تقييم محفوظ
+                        </small>
+                      )}
+                    </td>
                     <td>{row.qualification || '-'}</td>
                     <td>{row.department_name || '-'}</td>
                     <td>{row.job_title || '-'}</td>
                     <td>
                       <input
+                        disabled={row.active !== 1}
                         ref={(element) => {
                           evaluationInputRefs.current[row.employee_id] =
                             element;

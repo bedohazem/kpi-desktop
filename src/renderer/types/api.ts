@@ -86,6 +86,7 @@ export type MutationResult = {
 
 export type EvaluationEmployee = {
   employee_id: number;
+  active: number;
   employee_name: string;
   qualification: string | null;
   job_title: string | null;
