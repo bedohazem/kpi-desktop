@@ -144,6 +144,27 @@ export default function ReportsPage(): ReactElement {
     return sortDepartmentSummaryByTree(report.departmentSummary, departments);
   }, [report, departments]);
 
+  function getDepartmentDifference(departmentId: number | null): number | null {
+    if (!report || report.months.length < 2) {
+      return null;
+    }
+
+    const firstMonth = report.months[0];
+    const lastMonth = report.months[report.months.length - 1];
+
+    const departmentEmployees = orderedReportEmployees.filter(
+      (employee) => employee.department_id === departmentId,
+    );
+
+    const getMonthTotal = (selectedMonth: number): number =>
+      departmentEmployees.reduce((sum, employee) => {
+        const value = employee.month_values[String(selectedMonth)];
+        return sum + (typeof value === 'number' ? value : 0);
+      }, 0);
+
+    return getMonthTotal(lastMonth) - getMonthTotal(firstMonth);
+  }
+
   async function generateReport(): Promise<void> {
     toast.info('جاري انشاء تقرير ...');
 
@@ -246,13 +267,17 @@ export default function ReportsPage(): ReactElement {
       employeeRows.push(totalExcelRow);
     }
 
-    const departmentRows = orderedDepartmentSummary.map((department) => ({
-      الإدارة: department.department_name,
-      'عدد الموظفين': department.employees_count,
-      'عدد التقييمات': department.evaluations_count,
-      الإجمالي: Number(department.total.toFixed(2)),
-      المتوسط: Number(department.average.toFixed(2)),
-    }));
+    const departmentRows = orderedDepartmentSummary.map((department) => {
+      const difference = getDepartmentDifference(department.department_id);
+
+      return {
+        الإدارة: department.department_name,
+        'عدد الموظفين': department.employees_count,
+        'عدد التقييمات': department.evaluations_count,
+        الإجمالي: Number(department.total.toFixed(2)),
+        الفرق: difference === null ? '' : Number(difference.toFixed(2)),
+      };
+    });
 
     const workbook = XLSX.utils.book_new();
 
@@ -356,7 +381,7 @@ export default function ReportsPage(): ReactElement {
           <td>${department.employees_count}</td>
           <td>${department.evaluations_count}</td>
           <td>${formatNumber(department.total)}</td>
-          <td>${formatNumber(department.average)}</td>
+          <td>${formatDifference(getDepartmentDifference(department.department_id))}</td>
         </tr>
       `,
       )
@@ -516,7 +541,7 @@ export default function ReportsPage(): ReactElement {
               <th>الوظيفة</th>
               ${monthHeaders}
               <th>الإجمالي</th>
-              <th>المتوسط</th>
+              <th>الفرق</th>
               <th>ملاحظات</th>
             </tr>
           </thead>
@@ -703,7 +728,12 @@ export default function ReportsPage(): ReactElement {
                   <p>عدد الموظفين: {department.employees_count}</p>
                   <p>عدد التقييمات: {department.evaluations_count}</p>
                   <p>الإجمالي: {department.total.toFixed(2)}</p>
-                  <p>المتوسط: {department.average.toFixed(2)}</p>
+                  <p>
+                    الفرق:{' '}
+                    {formatDifference(
+                      getDepartmentDifference(department.department_id),
+                    )}
+                  </p>
                 </div>
               ))}
             </div>
