@@ -35,26 +35,46 @@ export function listEvaluationEmployees(
       `
       SELECT
         e.id AS employee_id,
-        e.active AS active,
+        e.active,
         e.name AS employee_name,
         e.qualification,
         e.job_title,
-        e.department_id,
+        CASE
+          WHEN me.id IS NOT NULL
+          THEN me.department_id_at_evaluation
+          ELSE e.department_id
+        END AS department_id,
         e.sort_order,
         d.name AS department_name,
         me.id AS evaluation_id,
         me.evaluation_value,
         e.notes AS evaluation_notes
+
       FROM employees e
-      LEFT JOIN departments d ON d.id = e.department_id
+
       LEFT JOIN monthly_evaluations me
         ON me.employee_id = e.id
        AND me.month = @month
        AND me.year = @year
+
+      LEFT JOIN departments d
+        ON d.id = CASE
+          WHEN me.id IS NOT NULL
+          THEN me.department_id_at_evaluation
+          ELSE e.department_id
+        END
+
       WHERE (e.active = 1 OR me.id IS NOT NULL)
+
         AND (
           @department_id IS NULL
-          OR e.department_id IN (
+          OR (
+            CASE
+              WHEN me.id IS NOT NULL
+              THEN me.department_id_at_evaluation
+              ELSE e.department_id
+            END
+          ) IN (
             WITH RECURSIVE selected_departments(id) AS (
               SELECT id
               FROM departments
@@ -64,17 +84,19 @@ export function listEvaluationEmployees(
 
               SELECT d.id
               FROM departments d
-              INNER JOIN selected_departments selected ON selected.id = d.parent_id
+              INNER JOIN selected_departments selected
+                ON selected.id = d.parent_id
             )
             SELECT id FROM selected_departments
           )
         )
+
       ORDER BY
         CASE WHEN e.sort_order > 0 THEN 0 ELSE 1 END,
         e.sort_order ASC,
         e.name COLLATE NOCASE ASC,
         e.id ASC
-    `,
+      `,
     )
     .all({
       month: filters.month,
