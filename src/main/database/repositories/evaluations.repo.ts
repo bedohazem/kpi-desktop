@@ -154,7 +154,6 @@ export function saveMonthlyEvaluations(
     ON CONFLICT(employee_id, month, year)
     DO UPDATE SET
       evaluation_value = excluded.evaluation_value,
-      notes = excluded.notes,
       updated_at = CURRENT_TIMESTAMP
   `);
 
