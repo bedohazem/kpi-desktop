@@ -55,9 +55,7 @@ export function getDashboardStats(): DashboardStats {
         IFNULL(SUM(me.evaluation_value), 0) AS total,
         IFNULL(AVG(me.evaluation_value), 0) AS average
       FROM monthly_evaluations me
-      INNER JOIN employees e ON e.id = me.employee_id
-      WHERE e.active = 1
-        AND me.month = @month
+      WHERE me.month = @month
         AND me.year = @year
     `,
     )
