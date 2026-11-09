@@ -106,7 +106,7 @@ export type EvaluationFilters = {
 
 export type SaveEvaluationItem = {
   employee_id: number;
-  evaluation_value: number;
+  evaluation_value: number | null;
   notes: string;
 };
 

@@ -122,6 +122,13 @@ export function saveMonthlyEvaluations(
   `,
   );
 
+  const deleteStatement = db.prepare(`
+    DELETE FROM monthly_evaluations
+    WHERE employee_id = @employee_id
+      AND month = @month
+      AND year = @year
+  `);
+
   const transaction = db.transaction(() => {
     for (const item of input.items) {
       const employee = activeEmployeeStatement.get(item.employee_id) as
@@ -130,6 +137,17 @@ export function saveMonthlyEvaluations(
       if (!employee || employee.active !== 1) {
         throw new Error('لا يمكن حفظ تقييم موظف معطّل');
       }
+
+      if (item.evaluation_value === null) {
+        deleteStatement.run({
+          employee_id: item.employee_id,
+          month: input.month,
+          year: input.year,
+        });
+
+        continue;
+      }
+
       const evaluationValue = Number(item.evaluation_value);
 
       if (!Number.isFinite(evaluationValue) || evaluationValue < 0) {
