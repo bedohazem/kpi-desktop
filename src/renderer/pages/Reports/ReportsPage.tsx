@@ -149,6 +149,7 @@ export default function ReportsPage(): ReactElement {
 
     try {
       setIsLoading(true);
+      setReport(null);
 
       const result = await window.api.reports.generate({
         year: Number(year),
@@ -567,18 +568,24 @@ export default function ReportsPage(): ReactElement {
           <label>
             السنة
             <input
+              disabled={isLoading}
               value={year}
-              onChange={(event) =>
-                setYear(event.target.value.replace(/\D/g, ''))
-              }
+              onChange={(event) => {
+                setReport(null);
+                setYear(event.target.value.replace(/\D/g, ''));
+              }}
             />
           </label>
 
           <label>
             من شهر
             <select
+              disabled={isLoading}
               value={fromMonth}
-              onChange={(event) => setFromMonth(event.target.value)}
+              onChange={(event) => {
+                setReport(null);
+                setFromMonth(event.target.value);
+              }}
             >
               {Array.from({ length: 12 }, (_, index) => index + 1).map(
                 (month) => (
@@ -593,8 +600,12 @@ export default function ReportsPage(): ReactElement {
           <label>
             إلى شهر
             <select
+              disabled={isLoading}
               value={toMonth}
-              onChange={(event) => setToMonth(event.target.value)}
+              onChange={(event) => {
+                setReport(null);
+                setToMonth(event.target.value);
+              }}
             >
               {Array.from({ length: 12 }, (_, index) => index + 1).map(
                 (month) => (
@@ -609,8 +620,10 @@ export default function ReportsPage(): ReactElement {
           <label>
             الإدارة
             <select
+              disabled={isLoading}
               value={departmentId}
               onChange={(event) => {
+                setReport(null);
                 setDepartmentId(event.target.value);
                 setEmployeeId('');
               }}
@@ -628,8 +641,12 @@ export default function ReportsPage(): ReactElement {
           <label>
             الموظف
             <select
+              disabled={isLoading}
               value={employeeId}
-              onChange={(event) => setEmployeeId(event.target.value)}
+              onChange={(event) => {
+                setReport(null);
+                setEmployeeId(event.target.value);
+              }}
             >
               <option value="">كل الموظفين</option>
               {filteredEmployees.map((employee) => (
@@ -652,7 +669,7 @@ export default function ReportsPage(): ReactElement {
 
           <button
             className="secondary-button"
-            disabled={!report}
+            disabled={!report || isLoading}
             onClick={exportReportToExcel}
           >
             تصدير Excel
@@ -660,7 +677,7 @@ export default function ReportsPage(): ReactElement {
 
           <button
             className="secondary-button"
-            disabled={!report}
+            disabled={!report || isLoading}
             onClick={exportReportToPdf}
           >
             حفظ PDF
