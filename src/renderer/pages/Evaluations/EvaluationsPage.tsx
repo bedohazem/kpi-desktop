@@ -46,7 +46,13 @@ export default function EvaluationsPage(): ReactElement {
   const evaluationInputRefs = useRef<Record<number, HTMLInputElement | null>>(
     {},
   );
-  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [copyTarget, setCopyTarget] = useState<{
+    month: number;
+    year: number;
+    department_id: number | null;
+  } | null>(null);
+
+  const [isCopying, setIsCopying] = useState(false);
   const [resetTarget, setResetTarget] = useState<{
     month: number;
     year: number;
@@ -247,22 +253,49 @@ export default function EvaluationsPage(): ReactElement {
   }
 
   async function copyPreviousMonth(): Promise<void> {
-    setCopyDialogOpen(false);
-    toast.info('جاري نسخ تقييمات الشهر السابق...');
+    if (!copyTarget || isCopying || isLoading || isSaving || isResettingMonth) {
+      return;
+    }
+
+    if (
+      !loadedScope ||
+      !isLoadedScopeCurrent ||
+      hasUnsavedChanges ||
+      loadedScope.month !== copyTarget.month ||
+      loadedScope.year !== copyTarget.year ||
+      loadedScope.department_id !== copyTarget.department_id
+    ) {
+      setCopyTarget(null);
+      toast.warning(
+        'بيانات الشهر اتغيرت أو فيه تقييمات غير محفوظة. حمّل الشهر واحفظ التعديلات ثم حاول تاني',
+      );
+      return;
+    }
+
+    const target = copyTarget;
+
+    setCopyTarget(null);
+    setIsCopying(true);
 
     try {
+      toast.info('جاري نسخ تقييمات الشهر السابق...');
+
       const result = await window.api.evaluations.copyPreviousMonth({
-        month: Number(month),
-        year: Number(year),
-        department_id: departmentId ? Number(departmentId) : null,
+        month: target.month,
+        year: target.year,
+        department_id: target.department_id,
       });
 
-      toast.success(`تم نسخ ${result.copied} تقييم من الشهر السابق`);
       await loadRows();
+
+      toast.success(`تم نسخ ${result.copied} تقييم من الشهر السابق`);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'حدث خطأ أثناء النسخ';
+
       toast.error(errorMessage);
+    } finally {
+      setIsCopying(false);
     }
   }
 
@@ -383,12 +416,25 @@ export default function EvaluationsPage(): ReactElement {
   }
 
   function requestCopyPreviousMonth(): void {
+    if (isCopying || isLoading || isSaving || isResettingMonth) {
+      return;
+    }
+
+    if (!loadedScope || !isLoadedScopeCurrent) {
+      toast.warning('اختار الشهر والإدارة واضغط تحميل الموظفين الأول');
+      return;
+    }
+
     if (hasUnsavedChanges) {
       toast.warning('احفظ التقييمات المعدّلة أولًا قبل نسخ الشهر السابق');
       return;
     }
 
-    setCopyDialogOpen(true);
+    setCopyTarget({
+      month: loadedScope.month,
+      year: loadedScope.year,
+      department_id: loadedScope.department_id,
+    });
   }
 
   function focusNextEvaluationInput(currentIndex: number): void {
@@ -639,7 +685,7 @@ export default function EvaluationsPage(): ReactElement {
           <label>
             السنة
             <input
-              disabled={isSaving || isLoading || isResettingMonth}
+              disabled={isSaving || isLoading || isResettingMonth || isCopying}
               value={year}
               onChange={(event) => {
                 const value = event.target.value.replace(/\D/g, '');
@@ -652,7 +698,7 @@ export default function EvaluationsPage(): ReactElement {
           <label>
             الشهر
             <select
-              disabled={isSaving || isLoading || isResettingMonth}
+              disabled={isSaving || isLoading || isResettingMonth || isCopying}
               value={month}
               onChange={(event) => {
                 const value = event.target.value;
@@ -673,7 +719,7 @@ export default function EvaluationsPage(): ReactElement {
           <label>
             الإدارة
             <select
-              disabled={isSaving || isLoading || isResettingMonth}
+              disabled={isSaving || isLoading || isResettingMonth || isCopying}
               value={departmentId}
               onChange={(event) => {
                 const value = event.target.value;
@@ -696,7 +742,7 @@ export default function EvaluationsPage(): ReactElement {
         <div className="actions-row">
           <button
             className="primary-button"
-            disabled={isLoading || isSaving || isResettingMonth}
+            disabled={isLoading || isSaving || isResettingMonth || isCopying}
             onClick={requestLoadRows}
           >
             {isLoading ? 'جاري التحميل...' : 'تحميل الموظفين'}
@@ -704,10 +750,10 @@ export default function EvaluationsPage(): ReactElement {
 
           <button
             className="secondary-button"
-            disabled={isSaving || isLoading || isResettingMonth}
+            disabled={isSaving || isLoading || isResettingMonth || isCopying}
             onClick={requestCopyPreviousMonth}
           >
-            نسخ من الشهر السابق
+            {isCopying ? 'جاري النسخ...' : 'نسخ من الشهر السابق'}
           </button>
 
           <button
@@ -716,6 +762,7 @@ export default function EvaluationsPage(): ReactElement {
               isSaving ||
               isLoading ||
               isResettingMonth ||
+              isCopying ||
               !isLoadedScopeCurrent ||
               !rows.some((row) => row.active === 1)
             }
@@ -728,6 +775,10 @@ export default function EvaluationsPage(): ReactElement {
             className="secondary-button"
             disabled={
               isExportingPdf ||
+              isCopying ||
+              isLoading ||
+              isSaving ||
+              isResettingMonth ||
               !isLoadedScopeCurrent ||
               visibleEvaluationRows.length === 0
             }
@@ -738,7 +789,7 @@ export default function EvaluationsPage(): ReactElement {
 
           <button
             className="danger-button"
-            disabled={isResettingMonth || isSaving || isLoading}
+            disabled={isResettingMonth || isSaving || isLoading || isCopying}
             onClick={requestResetMonth}
           >
             {isResettingMonth
@@ -895,15 +946,32 @@ export default function EvaluationsPage(): ReactElement {
       </section>
 
       <ConfirmDialog
-        open={copyDialogOpen}
-        title="نسخ تقييمات الشهر السابق"
-        message="هل تريد نسخ تقييمات الشهر السابق؟ القيم الموجودة حاليًا لن يتم استبدالها."
-        confirmText="نسخ"
+        open={copyTarget !== null}
+        title="تأكيد نسخ تقييمات الشهر السابق"
+        message={
+          copyTarget
+            ? `هل تريد نسخ تقييمات شهر ${
+                copyTarget.month === 1 ? 12 : copyTarget.month - 1
+              } سنة ${
+                copyTarget.month === 1 ? copyTarget.year - 1 : copyTarget.year
+              } إلى شهر ${copyTarget.month} سنة ${copyTarget.year}، ${
+                copyTarget.department_id === null
+                  ? 'لجميع الإدارات'
+                  : `لإدارة "${
+                      departmentOptions.find(
+                        (department) =>
+                          department.id === copyTarget.department_id,
+                      )?.name || 'المحددة'
+                    }"`
+              }؟ التقييمات الموجودة لن يتم استبدالها.`
+            : ''
+        }
+        confirmText="تأكيد النسخ"
         cancelText="إلغاء"
         onConfirm={() => {
           void copyPreviousMonth();
         }}
-        onCancel={() => setCopyDialogOpen(false)}
+        onCancel={() => setCopyTarget(null)}
       />
 
       <ConfirmDialog
