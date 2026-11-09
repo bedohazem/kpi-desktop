@@ -55,6 +55,7 @@ function migrateDb(database: Database.Database): void {
       evaluation_value REAL DEFAULT 0,
       notes TEXT DEFAULT '',
       department_id_at_evaluation INTEGER,
+      job_title_at_evaluation TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(employee_id) REFERENCES employees(id),
@@ -117,6 +118,17 @@ function migrateDb(database: Database.Database): void {
         );
       `);
     })();
+  }
+
+  const hasEvaluationJobTitle = evaluationColumns.some(
+    (column) => column.name === 'job_title_at_evaluation',
+  );
+
+  if (!hasEvaluationJobTitle) {
+    database.exec(`
+      ALTER TABLE monthly_evaluations
+      ADD COLUMN job_title_at_evaluation TEXT;
+    `);
   }
 
   const duplicateNationalId = database

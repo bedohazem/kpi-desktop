@@ -38,7 +38,11 @@ export function listEvaluationEmployees(
         e.active,
         e.name AS employee_name,
         e.qualification,
-        e.job_title,
+        CASE
+          WHEN me.id IS NOT NULL
+          THEN me.job_title_at_evaluation
+          ELSE e.job_title
+        END AS job_title,
         CASE
           WHEN me.id IS NOT NULL
           THEN me.department_id_at_evaluation
@@ -120,15 +124,15 @@ export function saveMonthlyEvaluations(
     'SELECT active FROM employees WHERE id = ?',
   );
 
-  const saveStatement = db.prepare(
-    `
+  const saveStatement = db.prepare(`
     INSERT INTO monthly_evaluations (
       employee_id,
       month,
       year,
       evaluation_value,
       notes,
-      department_id_at_evaluation
+      department_id_at_evaluation,
+      job_title_at_evaluation
     )
     VALUES (
       @employee_id,
@@ -140,6 +144,11 @@ export function saveMonthlyEvaluations(
         SELECT department_id
         FROM employees
         WHERE id = @employee_id
+      ),
+      (
+        SELECT job_title
+        FROM employees
+        WHERE id = @employee_id
       )
     )
     ON CONFLICT(employee_id, month, year)
@@ -147,8 +156,7 @@ export function saveMonthlyEvaluations(
       evaluation_value = excluded.evaluation_value,
       notes = excluded.notes,
       updated_at = CURRENT_TIMESTAMP
-  `,
-  );
+  `);
 
   const deleteStatement = db.prepare(`
     DELETE FROM monthly_evaluations
@@ -216,7 +224,8 @@ export function copyPreviousMonthEvaluations(
         year,
         evaluation_value,
         notes,
-        department_id_at_evaluation
+        department_id_at_evaluation,
+        job_title_at_evaluation
       )
       SELECT
         previous.employee_id,
@@ -224,7 +233,8 @@ export function copyPreviousMonthEvaluations(
         @year,
         previous.evaluation_value,
         previous.notes,
-        e.department_id
+        e.department_id,
+        e.job_title
       FROM monthly_evaluations previous
       INNER JOIN employees e ON e.id = previous.employee_id
       WHERE previous.month = @previousMonth
