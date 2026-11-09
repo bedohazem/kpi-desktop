@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import type { Department, Employee, ReportsResult } from '../../types/api';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { toast } from '../../utils/toast';
 import {
   flattenDepartmentTree,
@@ -347,17 +347,208 @@ export default function ReportsPage(): ReactElement {
 
     const workbook = XLSX.utils.book_new();
 
+    // نفس اتجاه ملف الموظفين: من اليمين إلى الشمال
+    workbook.Workbook = {
+      Views: [{ RTL: true }],
+    };
+
     const employeesSheet = XLSX.utils.json_to_sheet(employeeRows);
     const departmentsSheet = XLSX.utils.json_to_sheet(departmentRows);
     const historySheet = XLSX.utils.aoa_to_sheet(historyRows);
 
+    // تنسيق موحد وهادئ لكل أوراق التقرير
+    function styleReportSheet(
+      sheet: ReturnType<typeof XLSX.utils.json_to_sheet>,
+      widths: number[],
+      options: {
+        totalRow?: boolean;
+        wrapColumns?: number[];
+      } = {},
+    ): void {
+      if (!sheet['!ref']) return;
+
+      const range = XLSX.utils.decode_range(sheet['!ref']);
+
+      // عرض كل عمود
+      sheet['!cols'] = widths.map((width) => ({
+        wch: width,
+      }));
+
+      // ارتفاع الصفوف حسب طول المحتوى
+      sheet['!rows'] = Array.from({ length: range.e.r + 1 }, (_, row) => {
+        if (row === 0) return { hpt: 42 };
+
+        if (options.totalRow && row === range.e.r) {
+          return { hpt: 40 };
+        }
+
+        let maxLines = 1;
+
+        for (const col of options.wrapColumns || []) {
+          const address = XLSX.utils.encode_cell({
+            r: row,
+            c: col,
+          });
+
+          const value = String(sheet[address]?.v ?? '');
+          const charsPerLine = Math.max(14, widths[col] - 6);
+
+          const lines = value
+            .split(/\r?\n/)
+            .reduce(
+              (sum, line) =>
+                sum + Math.max(1, Math.ceil(line.length / charsPerLine)),
+              0,
+            );
+
+          maxLines = Math.max(maxLines, lines);
+        }
+
+        return {
+          hpt: Math.min(180, Math.max(36, maxLines * 22 + 12)),
+        };
+      });
+
+      // فلترة وترتيب البيانات من عنوان الجدول
+      const filterLastRow = options.totalRow ? range.e.r - 1 : range.e.r;
+
+      if (filterLastRow >= 1) {
+        sheet['!autofilter'] = {
+          ref: XLSX.utils.encode_range({
+            s: { r: 0, c: 0 },
+            e: { r: filterLastRow, c: range.e.c },
+          }),
+        };
+      }
+
+      for (let row = range.s.r; row <= range.e.r; row++) {
+        for (let col = range.s.c; col <= range.e.c; col++) {
+          const address = XLSX.utils.encode_cell({
+            r: row,
+            c: col,
+          });
+
+          const cell = sheet[address];
+          if (!cell) continue;
+
+          const isHeader = row === 0;
+          const isTotal = options.totalRow === true && row === range.e.r;
+
+          cell.s = {
+            font: {
+              name: 'Arial',
+              sz: isHeader ? 15 : 14,
+              bold: isHeader || isTotal,
+              color: { rgb: '111827' },
+            },
+
+            alignment: {
+              horizontal:
+                !isHeader && options.wrapColumns?.includes(col)
+                  ? 'right'
+                  : 'center',
+              vertical: 'center',
+              wrapText: true,
+            },
+
+            border: {
+              bottom: {
+                style: 'thin',
+                color: { rgb: 'D1D5DB' },
+              },
+              right: {
+                style: 'thin',
+                color: { rgb: 'E5E7EB' },
+              },
+            },
+
+            ...(isHeader
+              ? {
+                  fill: {
+                    fgColor: { rgb: 'DCEAF7' },
+                  },
+                }
+              : isTotal
+                ? {
+                    fill: {
+                      fgColor: { rgb: 'EDF3FA' },
+                    },
+                  }
+                : {}),
+
+            ...(cell.t === 'n'
+              ? {
+                  numFmt: Number.isInteger(Number(cell.v)) ? '0' : '0.00',
+                }
+              : {}),
+          };
+        }
+      }
+    }
+
+    // الشيت الأول: تقرير الموظفين
+    styleReportSheet(
+      employeesSheet,
+      [
+        7, // م
+        34, // اسم الموظف
+        24, // المؤهل
+        28, // الإدارة الحالية
+        28, // الوظيفة الحالية
+        68, // حركة الإدارة والوظيفة
+        ...report.months.map(() => 15), // الشهور
+        18, // الإجمالي
+        16, // الفرق
+        42, // ملاحظات
+      ],
+      {
+        totalRow: employeeRows.length > 0,
+        wrapColumns: [1, 3, 4, 5, 9 + report.months.length],
+      },
+    );
+
+    // الشيت الثاني: ملخص الإدارات
+    styleReportSheet(
+      departmentsSheet,
+      [
+        38, // الإدارة
+        22, // عدد الموظفين
+        22, // عدد التقييمات
+        20, // الإجمالي
+        18, // الفرق
+      ],
+      {
+        wrapColumns: [0],
+      },
+    );
+
+    // الشيت الثالث: تاريخ التقييمات
+    styleReportSheet(
+      historySheet,
+      [
+        36, // اسم الموظف
+        18, // السنة
+        16, // الشهر
+        38, // الإدارة وقت التقييم
+        38, // الوظيفة وقت التقييم
+        22, // درجة التقييم
+      ],
+      {
+        wrapColumns: [0, 3, 4],
+      },
+    );
+
     XLSX.utils.book_append_sheet(workbook, employeesSheet, 'تقرير الموظفين');
+
     XLSX.utils.book_append_sheet(workbook, departmentsSheet, 'ملخص الإدارات');
+
     XLSX.utils.book_append_sheet(workbook, historySheet, 'تاريخ التقييمات');
 
     const fileName = `KPI_Report_${year}_${fromMonth}_to_${toMonth}.xlsx`;
 
-    XLSX.writeFile(workbook, fileName);
+    XLSX.writeFile(workbook, fileName, {
+      cellStyles: true,
+    });
   }
 
   function escapeHtml(value: string | number | null | undefined): string {
