@@ -816,3 +816,61 @@ th {
   background: white;
   color: #92400e;
 }
+
+/* Searchable employees dropdown in reports */
+
+.employee-search-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.employee-search-field > label {
+  font-weight: 700;
+}
+
+.employee-search-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  z-index: 30;
+  max-height: 280px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 9px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.employee-search-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  background: #fff;
+  color: #111827;
+  border: 0;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: right;
+  font: inherit;
+  cursor: pointer;
+}
+
+.employee-search-option:hover,
+.employee-search-option.highlighted {
+  background: #eff6ff;
+}
+
+.employee-search-option small {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.employee-search-empty {
+  padding: 12px;
+  color: #6b7280;
+  text-align: center;
+}

@@ -6,7 +6,18 @@ import {
   flattenDepartmentTree,
   sortDepartmentSummaryByTree,
   sortEmployeesByDepartmentTree,
+  sortEmployeeListByDepartmentTree,
 } from '../../utils/departments-tree';
+
+function normalizeEmployeeSearch(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .toLowerCase()
+    .trim();
+}
 
 const currentYear = new Date().getFullYear();
 
@@ -19,7 +30,9 @@ export default function ReportsPage(): ReactElement {
   const [toMonth, setToMonth] = useState('12');
   const [departmentId, setDepartmentId] = useState('');
   const [employeeId, setEmployeeId] = useState('');
-
+  const [employeeSearch, setEmployeeSearch] = useState('');
+  const [employeeDropdownOpen, setEmployeeDropdownOpen] = useState(false);
+  const [highlightedEmployeeIndex, setHighlightedEmployeeIndex] = useState(0);
   const [report, setReport] = useState<ReportsResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -28,7 +41,25 @@ export default function ReportsPage(): ReactElement {
     [departments],
   );
 
-  const filteredEmployees = employees;
+  const filteredEmployees = useMemo(() => {
+    const ordered = sortEmployeeListByDepartmentTree(employees, departments);
+
+    const query = normalizeEmployeeSearch(employeeSearch);
+
+    if (!query) return ordered;
+
+    return ordered.filter((employee) =>
+      normalizeEmployeeSearch(employee.name).includes(query),
+    );
+  }, [employees, departments, employeeSearch]);
+
+  function selectReportEmployee(employee: Employee | null): void {
+    setEmployeeId(employee ? String(employee.id) : '');
+    setEmployeeSearch(employee?.name || '');
+    setEmployeeDropdownOpen(false);
+    setHighlightedEmployeeIndex(0);
+    setReport(null);
+  }
 
   const orderedReportEmployees = useMemo(() => {
     if (!report) {
@@ -195,6 +226,12 @@ export default function ReportsPage(): ReactElement {
   }
 
   async function generateReport(): Promise<void> {
+    if (employeeSearch.trim() && !employeeId) {
+      toast.warning(
+        'اختار موظف من نتائج البحث، أو امسح الاسم لعرض كل الموظفين',
+      );
+      return;
+    }
     toast.info('جاري انشاء تقرير ...');
 
     try {
@@ -930,6 +967,9 @@ export default function ReportsPage(): ReactElement {
                 setReport(null);
                 setDepartmentId(event.target.value);
                 setEmployeeId('');
+                setEmployeeSearch('');
+                setEmployeeDropdownOpen(false);
+                setHighlightedEmployeeIndex(0);
               }}
             >
               <option value="">كل الإدارات</option>
@@ -943,25 +983,117 @@ export default function ReportsPage(): ReactElement {
             </select>
           </label>
 
-          <label>
-            الموظف
-            <select
+          <div
+            className="employee-search-field"
+            onBlur={(event) => {
+              if (
+                !event.currentTarget.contains(
+                  event.relatedTarget as Node | null,
+                )
+              ) {
+                setEmployeeDropdownOpen(false);
+              }
+            }}
+          >
+            <label htmlFor="report-employee-search">الموظف</label>
+
+            <input
+              id="report-employee-search"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={employeeDropdownOpen}
+              aria-controls="report-employee-results"
+              autoComplete="off"
               disabled={isLoading}
-              value={employeeId}
-              onChange={(event) => {
-                setReport(null);
-                setEmployeeId(event.target.value);
+              placeholder="كل الموظفين — اكتب اسم الموظف"
+              value={employeeSearch}
+              onFocus={(event) => {
+                setEmployeeDropdownOpen(true);
+                event.currentTarget.select();
               }}
-            >
-              <option value="">كل الموظفين</option>
-              {filteredEmployees.map((employee) => (
-                <option key={employee.id} value={employee.id}>
-                  {employee.name}
-                  {employee.active !== 1 ? ' (معطّل)' : ''}
-                </option>
-              ))}
-            </select>
-          </label>
+              onChange={(event) => {
+                setEmployeeSearch(event.target.value);
+                setEmployeeId('');
+                setReport(null);
+                setHighlightedEmployeeIndex(0);
+                setEmployeeDropdownOpen(true);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  setEmployeeDropdownOpen(false);
+                  return;
+                }
+
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  setEmployeeDropdownOpen(true);
+
+                  const direction = event.key === 'ArrowDown' ? 1 : -1;
+
+                  setHighlightedEmployeeIndex((index) =>
+                    Math.max(
+                      0,
+                      Math.min(filteredEmployees.length - 1, index + direction),
+                    ),
+                  );
+                }
+
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+
+                  const employee = filteredEmployees[highlightedEmployeeIndex];
+
+                  if (employeeDropdownOpen && employee) {
+                    selectReportEmployee(employee);
+                  }
+                }
+              }}
+            />
+
+            {employeeDropdownOpen && !isLoading && (
+              <div
+                id="report-employee-results"
+                role="listbox"
+                className="employee-search-dropdown"
+              >
+                {!employeeSearch.trim() && (
+                  <button
+                    type="button"
+                    className="employee-search-option"
+                    onClick={() => selectReportEmployee(null)}
+                  >
+                    كل الموظفين
+                  </button>
+                )}
+
+                {filteredEmployees.length === 0 ? (
+                  <div className="employee-search-empty">
+                    لا يوجد موظف مطابق للبحث
+                  </div>
+                ) : (
+                  filteredEmployees.map((employee, index) => (
+                    <button
+                      key={employee.id}
+                      type="button"
+                      role="option"
+                      aria-selected={employeeId === String(employee.id)}
+                      className={`employee-search-option ${
+                        highlightedEmployeeIndex === index ? 'highlighted' : ''
+                      }`}
+                      onMouseEnter={() => setHighlightedEmployeeIndex(index)}
+                      onClick={() => selectReportEmployee(employee)}
+                    >
+                      <span>{employee.name}</span>
+                      <small>
+                        {employee.department_name || 'بدون إدارة'}
+                        {employee.active !== 1 ? ' — معطّل' : ''}
+                      </small>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="actions-row">
