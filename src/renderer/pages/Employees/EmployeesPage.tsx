@@ -822,7 +822,7 @@ export default function EmployeesPage(): ReactElement {
       <ConfirmDialog
         open={Boolean(employeeToDelete)}
         title="حذف موظف"
-        message={`هل تريد حذف الموظف "${employeeToDelete?.name || ''}" نهائيًا؟ سيتم حذف تقييماته القديمة أيضًا.`}
+        message={`هل تريد حذف الموظف "${employeeToDelete?.name || ''}" نهائيًا؟ الحذف مسموح فقط للموظفين الذين ليس لديهم تقييمات محفوظة. إذا كان لديه تقييمات، يمكنك تعطيله بدلًا من حذفه.`}
         confirmText="حذف نهائي"
         cancelText="إلغاء"
         danger

@@ -236,28 +236,31 @@ export function setEmployeeActive(
 export function deleteEmployee(input: DeleteEmployeeInput): MutationResult {
   const id = Number(input.id);
 
-  if (!id) {
+  if (!Number.isInteger(id) || id <= 0) {
     throw new Error('الموظف غير صحيح');
   }
 
   const db = getDb();
 
   const transaction = db.transaction(() => {
-    db.prepare(
-      `
-      DELETE FROM monthly_evaluations
-      WHERE employee_id = ?
-    `,
-    ).run(id);
-
-    const result = db
+    // حماية التقييمات التاريخية من الحذف
+    const evaluations = db
       .prepare(
         `
-        DELETE FROM employees
-        WHERE id = ?
+        SELECT COUNT(*) AS count
+        FROM monthly_evaluations
+        WHERE employee_id = ?
       `,
       )
-      .run(id);
+      .get(id) as { count: number };
+
+    if (evaluations.count > 0) {
+      throw new Error(
+        'لا يمكن حذف الموظف لأنه لديه تقييمات محفوظة. يمكنك تعطيله بدلًا من حذفه.',
+      );
+    }
+
+    const result = db.prepare('DELETE FROM employees WHERE id = ?').run(id);
 
     if (result.changes === 0) {
       throw new Error('الموظف غير موجود');
