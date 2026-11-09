@@ -23,6 +23,7 @@ export default function ToastContainer(): ReactElement {
           id,
           message: customEvent.detail.message,
           type: customEvent.detail.type,
+          confirmation: customEvent.detail.confirmation,
         },
       ]);
 
