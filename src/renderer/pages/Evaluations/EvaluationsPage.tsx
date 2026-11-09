@@ -24,7 +24,14 @@ const currentDate = new Date();
 export default function EvaluationsPage(): ReactElement {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [rows, setRows] = useState<EvaluationRowState[]>([]);
+  const [loadedScope, setLoadedScope] = useState<{
+    month: number;
+    year: number;
+    department_id: number | null;
+  } | null>(null);
 
+  const loadGenerationRef = useRef(0);
+  const pendingScopeToastRef = useRef(false);
   const [month, setMonth] = useState(String(currentDate.getMonth() + 1));
   const [year, setYear] = useState(String(currentDate.getFullYear()));
   const [departmentId, setDepartmentId] = useState('');
@@ -53,6 +60,53 @@ export default function EvaluationsPage(): ReactElement {
     () => flattenDepartmentTree(departments),
     [departments],
   );
+
+  const isLoadedScopeCurrent =
+    loadedScope !== null &&
+    loadedScope.month === Number(month) &&
+    loadedScope.year === Number(year) &&
+    loadedScope.department_id === (departmentId ? Number(departmentId) : null);
+
+  const hasUnsavedChanges = rows.some((row) => {
+    if (row.active !== 1) return false;
+
+    const input = row.evaluationValueInput.trim();
+
+    const newValue = input === '' ? null : Number(input);
+
+    return newValue !== row.evaluation_value;
+  });
+
+  function changeEvaluationScope(update: () => void): void {
+    function applyChange(): void {
+      loadGenerationRef.current += 1;
+      setRows([]);
+      setLoadedScope(null);
+      update();
+    }
+
+    if (!hasUnsavedChanges) {
+      applyChange();
+      return;
+    }
+
+    // منع ظهور أكثر من رسالة تأكيد
+    if (pendingScopeToastRef.current) return;
+
+    pendingScopeToastRef.current = true;
+
+    toast.confirm(
+      'فيه تعديلات على التقييمات لسه ما اتحفظتش. هل تريد تجاهلها وتغيير الاختيار؟',
+      'تجاهل والمتابعة',
+      () => {
+        pendingScopeToastRef.current = false;
+        applyChange();
+      },
+      () => {
+        pendingScopeToastRef.current = false;
+      },
+    );
+  }
 
   const orderedEvaluationRows = useMemo(
     () => sortEmployeesByDepartmentTree(rows, departments),
@@ -105,16 +159,23 @@ export default function EvaluationsPage(): ReactElement {
   ]);
 
   async function loadRows(): Promise<void> {
+    const scope = {
+      month: Number(month),
+      year: Number(year),
+      department_id: departmentId ? Number(departmentId) : null,
+    };
+
+    const generation = ++loadGenerationRef.current;
+
     toast.info('جاري تحميل التقييمات...');
 
     try {
       setIsLoading(true);
 
-      const evaluationRows = await window.api.evaluations.listEmployees({
-        month: Number(month),
-        year: Number(year),
-        department_id: departmentId ? Number(departmentId) : null,
-      });
+      const evaluationRows = await window.api.evaluations.listEmployees(scope);
+
+      // تجاهل نتيجة طلب قديم لو الاختيار اتغير
+      if (generation !== loadGenerationRef.current) return;
 
       setRows(
         evaluationRows.map((row) => ({
@@ -125,19 +186,30 @@ export default function EvaluationsPage(): ReactElement {
         })),
       );
 
+      setLoadedScope(scope);
+
       toast.success('تم تحميل الموظفين');
     } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : 'حدث خطأ أثناء تحميل التقييمات';
-      toast.error(errorMessage);
+      if (generation === loadGenerationRef.current) {
+        setRows([]);
+        setLoadedScope(null);
+
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'حدث خطأ أثناء تحميل التقييمات';
+
+        toast.error(message);
+      }
     } finally {
       setIsLoading(false);
     }
   }
-
   async function saveEvaluations(): Promise<void> {
+    if (!isLoadedScopeCurrent || !loadedScope) {
+      toast.warning('حمّل تقييمات الشهر المختار الأول');
+      return;
+    }
     toast.info('جاري حفظ التقييمات...');
 
     const editableRows = rows.filter((row) => row.active === 1);
@@ -151,13 +223,14 @@ export default function EvaluationsPage(): ReactElement {
       setIsSaving(true);
 
       await window.api.evaluations.saveMonth({
-        month: Number(month),
-        year: Number(year),
+        month: loadedScope.month,
+        year: loadedScope.year,
         items: editableRows.map((row) => ({
           employee_id: row.employee_id,
-          evaluation_value: row.evaluationValueInput
-            ? Number(row.evaluationValueInput)
-            : 0,
+          evaluation_value:
+            row.evaluationValueInput.trim() === ''
+              ? null
+              : Number(row.evaluationValueInput),
           notes: '',
         })),
       });
@@ -239,7 +312,9 @@ export default function EvaluationsPage(): ReactElement {
 
       const result = await window.api.evaluations.resetMonth(target);
 
+      loadGenerationRef.current += 1;
       setRows([]);
+      setLoadedScope(null);
 
       if (result.deleted === 0) {
         toast.info('لا توجد تقييمات محفوظة في هذا الشهر');
@@ -500,6 +575,11 @@ export default function EvaluationsPage(): ReactElement {
   }
 
   async function exportMonthlyEvaluationsToPdf(): Promise<void> {
+    if (!isLoadedScopeCurrent) {
+      toast.warning('حمّل تقييمات الشهر المختار قبل التصدير');
+      return;
+    }
+
     if (visibleEvaluationRows.length === 0) {
       toast.warning('لا توجد تقييمات ظاهرة لتصديرها');
       return;
@@ -540,18 +620,26 @@ export default function EvaluationsPage(): ReactElement {
           <label>
             السنة
             <input
+              disabled={isSaving || isLoading || isResettingMonth}
               value={year}
-              onChange={(event) =>
-                setYear(event.target.value.replace(/\D/g, ''))
-              }
+              onChange={(event) => {
+                const value = event.target.value.replace(/\D/g, '');
+
+                changeEvaluationScope(() => setYear(value));
+              }}
             />
           </label>
 
           <label>
             الشهر
             <select
+              disabled={isSaving || isLoading || isResettingMonth}
               value={month}
-              onChange={(event) => setMonth(event.target.value)}
+              onChange={(event) => {
+                const value = event.target.value;
+
+                changeEvaluationScope(() => setMonth(value));
+              }}
             >
               {Array.from({ length: 12 }, (_, index) => index + 1).map(
                 (monthNumber) => (
@@ -566,8 +654,13 @@ export default function EvaluationsPage(): ReactElement {
           <label>
             الإدارة
             <select
+              disabled={isSaving || isLoading || isResettingMonth}
               value={departmentId}
-              onChange={(event) => setDepartmentId(event.target.value)}
+              onChange={(event) => {
+                const value = event.target.value;
+
+                changeEvaluationScope(() => setDepartmentId(value));
+              }}
             >
               <option value="">كل الإدارات</option>
               {departmentOptions.map((department) => (
@@ -598,7 +691,13 @@ export default function EvaluationsPage(): ReactElement {
 
           <button
             className="primary-button"
-            disabled={isSaving || !rows.some((row) => row.active === 1)}
+            disabled={
+              isSaving ||
+              isLoading ||
+              isResettingMonth ||
+              !isLoadedScopeCurrent ||
+              !rows.some((row) => row.active === 1)
+            }
             onClick={saveEvaluations}
           >
             {isSaving ? 'جاري الحفظ...' : 'حفظ التقييمات'}
@@ -606,7 +705,11 @@ export default function EvaluationsPage(): ReactElement {
 
           <button
             className="secondary-button"
-            disabled={isExportingPdf || visibleEvaluationRows.length === 0}
+            disabled={
+              isExportingPdf ||
+              !isLoadedScopeCurrent ||
+              visibleEvaluationRows.length === 0
+            }
             onClick={exportMonthlyEvaluationsToPdf}
           >
             {isExportingPdf ? 'جاري إنشاء PDF...' : 'قائمة تقييمات الشهر PDF'}

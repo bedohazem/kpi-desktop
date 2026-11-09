@@ -794,3 +794,25 @@ th {
   white-space: pre-line;
   line-height: 1.6;
 }
+
+.toast-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.toast-actions button {
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: transparent;
+  color: white;
+  font-weight: 700;
+}
+
+.toast-actions button:first-child {
+  background: white;
+  color: #92400e;
+}

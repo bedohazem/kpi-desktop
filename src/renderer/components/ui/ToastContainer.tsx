@@ -26,11 +26,13 @@ export default function ToastContainer(): ReactElement {
         },
       ]);
 
-      window.setTimeout(() => {
-        setToasts((currentToasts) =>
-          currentToasts.filter((toast) => toast.id !== id),
-        );
-      }, 3500);
+      if (!customEvent.detail.confirmation) {
+        window.setTimeout(() => {
+          setToasts((currentToasts) =>
+            currentToasts.filter((toast) => toast.id !== id),
+          );
+        }, 3500);
+      }
     }
 
     window.addEventListener('app-toast', handleToast);
@@ -44,7 +46,35 @@ export default function ToastContainer(): ReactElement {
     <div className="toast-container">
       {toasts.map((toast) => (
         <div className={getToastClass(toast.type)} key={toast.id}>
-          {toast.message}
+          <div>{toast.message}</div>
+
+          {toast.confirmation && (
+            <div className="toast-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  setToasts((items) =>
+                    items.filter((item) => item.id !== toast.id),
+                  );
+                  toast.confirmation?.onConfirm();
+                }}
+              >
+                {toast.confirmation.confirmText}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setToasts((items) =>
+                    items.filter((item) => item.id !== toast.id),
+                  );
+                  toast.confirmation?.onCancel();
+                }}
+              >
+                إلغاء
+              </button>
+            </div>
+          )}
         </div>
       ))}
     </div>
