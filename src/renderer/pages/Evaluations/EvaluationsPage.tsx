@@ -356,7 +356,7 @@ export default function EvaluationsPage(): ReactElement {
     let isMounted = true;
 
     window.api.departments
-      .list()
+      .list({ includeInactive: true })
       .then((departmentRows) => {
         if (isMounted) {
           setDepartments(departmentRows);
@@ -686,6 +686,7 @@ export default function EvaluationsPage(): ReactElement {
                 <option key={department.id} value={department.id}>
                   {'— '.repeat(department.level)}
                   {department.name}
+                  {department.active !== 1 ? ' (معطّلة)' : ''}
                 </option>
               ))}
             </select>
