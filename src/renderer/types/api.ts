@@ -167,6 +167,8 @@ export type DepartmentSummaryRow = {
   evaluations_count: number;
   total: number;
   average: number;
+  first_month_total: number;
+  last_month_total: number;
 };
 
 export type ReportsResult = {

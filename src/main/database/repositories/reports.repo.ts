@@ -15,6 +15,7 @@ type EmployeeBaseRow = {
   sort_order: number;
   department_name: string | null;
   notes: string | null;
+  active: number;
 };
 
 type EvaluationValueRow = {
@@ -30,6 +31,8 @@ type DepartmentAggregateRow = {
   evaluations_count: number;
   total: number | null;
   average: number | null;
+  first_month_total: number | null;
+  last_month_total: number | null;
 };
 
 function validateReportFilters(filters: ReportFilters): void {
@@ -66,11 +69,21 @@ export function generateReports(filters: ReportFilters): ReportsResult {
   validateReportFilters(filters);
 
   const db = getDb();
+
   const months = Array.from(
     { length: filters.to_month - filters.from_month + 1 },
     (_, index) => filters.from_month + index,
   );
 
+  const params = {
+    year: filters.year,
+    from_month: filters.from_month,
+    to_month: filters.to_month,
+    department_id: filters.department_id,
+    employee_id: filters.employee_id,
+  };
+
+  // جلب الموظفين النشطين وأصحاب التقييمات التاريخية
   const employees = db
     .prepare(
       `
@@ -82,37 +95,21 @@ export function generateReports(filters: ReportFilters): ReportsResult {
         e.department_id,
         e.sort_order,
         COALESCE(d.name, 'بدون إدارة') AS department_name,
-        e.notes
+        e.notes,
+        e.active
       FROM employees e
       LEFT JOIN departments d ON d.id = e.department_id
       WHERE (
-          e.active = 1
-          OR EXISTS (
-            SELECT 1
-            FROM monthly_evaluations historical
-            WHERE historical.employee_id = e.id
-              AND historical.year = @year
-              AND historical.month BETWEEN @from_month AND @to_month
-          )
+        e.active = 1
+        OR EXISTS (
+          SELECT 1
+          FROM monthly_evaluations historical
+          WHERE historical.employee_id = e.id
+            AND historical.year = @year
+            AND historical.month BETWEEN @from_month AND @to_month
         )
-        AND (
-          @department_id IS NULL
-          OR e.department_id IN (
-            WITH RECURSIVE selected_departments(id) AS (
-              SELECT id
-              FROM departments
-              WHERE id = @department_id
-
-              UNION
-
-              SELECT d.id
-              FROM departments d
-              INNER JOIN selected_departments selected ON selected.id = d.parent_id
-            )
-            SELECT id FROM selected_departments
-          )
-        )
-        AND (@employee_id IS NULL OR e.id = @employee_id)
+      )
+      AND (@employee_id IS NULL OR e.id = @employee_id)
       ORDER BY e.id ASC
     `,
     )
@@ -120,10 +117,10 @@ export function generateReports(filters: ReportFilters): ReportsResult {
       year: filters.year,
       from_month: filters.from_month,
       to_month: filters.to_month,
-      department_id: filters.department_id,
       employee_id: filters.employee_id,
     }) as EmployeeBaseRow[];
 
+  // جلب التقييمات حسب الإدارة المحفوظة وقت التقييم
   const evaluations = db
     .prepare(
       `
@@ -132,12 +129,11 @@ export function generateReports(filters: ReportFilters): ReportsResult {
         me.month,
         me.evaluation_value
       FROM monthly_evaluations me
-      INNER JOIN employees e ON e.id = me.employee_id
       WHERE me.year = @year
         AND me.month BETWEEN @from_month AND @to_month
         AND (
           @department_id IS NULL
-          OR e.department_id IN (
+          OR me.department_id_at_evaluation IN (
             WITH RECURSIVE selected_departments(id) AS (
               SELECT id
               FROM departments
@@ -147,40 +143,84 @@ export function generateReports(filters: ReportFilters): ReportsResult {
 
               SELECT d.id
               FROM departments d
-              INNER JOIN selected_departments selected ON selected.id = d.parent_id
+              INNER JOIN selected_departments sd
+                ON sd.id = d.parent_id
             )
             SELECT id FROM selected_departments
           )
         )
-        AND (@employee_id IS NULL OR e.id = @employee_id)
+        AND (@employee_id IS NULL OR me.employee_id = @employee_id)
       ORDER BY me.employee_id, me.month
     `,
     )
-    .all({
-      year: filters.year,
-      from_month: filters.from_month,
-      to_month: filters.to_month,
-      department_id: filters.department_id,
-      employee_id: filters.employee_id,
-    }) as EvaluationValueRow[];
+    .all(params) as EvaluationValueRow[];
 
   const valuesByEmployee = new Map<number, EvaluationValueRow[]>();
 
   for (const evaluation of evaluations) {
     const current = valuesByEmployee.get(evaluation.employee_id) || [];
+
     current.push(evaluation);
     valuesByEmployee.set(evaluation.employee_id, current);
   }
 
-  const employeeRows: EmployeeReportRow[] = employees.map((employee) => {
+  // تحديد الإدارة المختارة والإدارات التابعة لها
+  const selectedDepartmentIds =
+    filters.department_id === null
+      ? null
+      : new Set(
+          (
+            db
+              .prepare(
+                `
+                WITH RECURSIVE selected_departments(id) AS (
+                  SELECT id
+                  FROM departments
+                  WHERE id = @department_id
+
+                  UNION
+
+                  SELECT d.id
+                  FROM departments d
+                  INNER JOIN selected_departments sd
+                    ON sd.id = d.parent_id
+                )
+                SELECT id FROM selected_departments
+              `,
+              )
+              .all({ department_id: filters.department_id }) as Array<{
+              id: number;
+            }>
+          ).map((row) => row.id),
+        );
+
+  // الموظف المنقول يظل ظاهرًا إذا له تقييم تاريخي في الإدارة
+  const reportEmployees = employees.filter((employee) => {
+    if (selectedDepartmentIds === null) {
+      return true;
+    }
+
+    const activeInSelectedDepartment =
+      employee.active === 1 &&
+      employee.department_id !== null &&
+      selectedDepartmentIds.has(employee.department_id);
+
+    const hasHistoricalEvaluation = valuesByEmployee.has(employee.employee_id);
+
+    return activeInSelectedDepartment || hasHistoricalEvaluation;
+  });
+
+  const employeeRows: EmployeeReportRow[] = reportEmployees.map((employee) => {
     const employeeEvaluations =
       valuesByEmployee.get(employee.employee_id) || [];
+
     const monthValues: Record<string, number | null> = {};
 
     for (const month of months) {
       const found = employeeEvaluations.find(
         (evaluation) => evaluation.month === month,
       );
+
       monthValues[String(month)] = found
         ? Number(found.evaluation_value)
         : null;
@@ -191,6 +231,7 @@ export function generateReports(filters: ReportFilters): ReportsResult {
     );
 
     const total = numericValues.reduce((sum, value) => sum + value, 0);
+
     const average = numericValues.length > 0 ? total / numericValues.length : 0;
 
     return {
@@ -202,61 +243,89 @@ export function generateReports(filters: ReportFilters): ReportsResult {
     };
   });
 
+  // ملخص الإدارات اعتمادًا على الإدارة التاريخية لكل تقييم
   const summaryRows = db
     .prepare(
       `
+      WITH RECURSIVE selected_departments(id) AS (
+        SELECT id
+        FROM departments
+        WHERE id = @department_id
+
+        UNION
+
+        SELECT d.id
+        FROM departments d
+        INNER JOIN selected_departments sd
+          ON sd.id = d.parent_id
+      ),
+      base AS (
+        SELECT
+          e.id AS employee_id,
+          e.department_id AS department_id,
+          NULL AS evaluation_id,
+          NULL AS evaluation_value,
+          NULL AS evaluation_month
+        FROM employees e
+        WHERE e.active = 1
+          AND (@employee_id IS NULL OR e.id = @employee_id)
+
+        UNION ALL
+
+        SELECT
+          me.employee_id,
+          me.department_id_at_evaluation AS department_id,
+          me.id AS evaluation_id,
+          me.evaluation_value,
+          me.month AS evaluation_month
+        FROM monthly_evaluations me
+        WHERE me.year = @year
+          AND me.month BETWEEN @from_month AND @to_month
+          AND (
+            @employee_id IS NULL
+            OR me.employee_id = @employee_id
+          )
+      )
       SELECT
-        e.department_id,
+        b.department_id,
         COALESCE(d.name, 'بدون إدارة') AS department_name,
-        COUNT(DISTINCT e.id) AS employees_count,
-        COUNT(me.id) AS evaluations_count,
-        IFNULL(SUM(me.evaluation_value), 0) AS total,
-        IFNULL(AVG(me.evaluation_value), 0) AS average
-      FROM employees e
-      LEFT JOIN departments d ON d.id = e.department_id
-      LEFT JOIN monthly_evaluations me
-        ON me.employee_id = e.id
-       AND me.year = @year
-       AND me.month BETWEEN @from_month AND @to_month
+        COUNT(DISTINCT b.employee_id) AS employees_count,
+        COUNT(b.evaluation_id) AS evaluations_count,
+        IFNULL(SUM(b.evaluation_value), 0) AS total,
+        IFNULL(AVG(b.evaluation_value), 0) AS average,
+        IFNULL(
+          SUM(
+            CASE
+              WHEN b.evaluation_month = @from_month
+              THEN b.evaluation_value
+              ELSE 0
+            END
+          ),
+          0
+        ) AS first_month_total,
+        IFNULL(
+          SUM(
+            CASE
+              WHEN b.evaluation_month = @to_month
+              THEN b.evaluation_value
+              ELSE 0
+            END
+          ),
+          0
+        ) AS last_month_total
+      FROM base b
+      LEFT JOIN departments d ON d.id = b.department_id
       WHERE (
-          e.active = 1
-          OR EXISTS (
-            SELECT 1
-            FROM monthly_evaluations historical
-            WHERE historical.employee_id = e.id
-              AND historical.year = @year
-              AND historical.month BETWEEN @from_month AND @to_month
-          )
+        @department_id IS NULL
+        OR b.department_id IN (
+          SELECT id FROM selected_departments
         )
-        AND (
-          @department_id IS NULL
-          OR e.department_id IN (
-            WITH RECURSIVE selected_departments(id) AS (
-              SELECT id
-              FROM departments
-              WHERE id = @department_id
-
-              UNION
-
-              SELECT d.id
-              FROM departments d
-              INNER JOIN selected_departments selected ON selected.id = d.parent_id
-            )
-            SELECT id FROM selected_departments
-          )
-        )
-        AND (@employee_id IS NULL OR e.id = @employee_id)
-      GROUP BY e.department_id, d.name
+      )
+      GROUP BY b.department_id, d.name
       ORDER BY d.name
     `,
     )
-    .all({
-      year: filters.year,
-      from_month: filters.from_month,
-      to_month: filters.to_month,
-      department_id: filters.department_id,
-      employee_id: filters.employee_id,
-    }) as DepartmentAggregateRow[];
+    .all(params) as DepartmentAggregateRow[];
 
   const departmentSummary: DepartmentSummaryRow[] = summaryRows.map((row) => ({
     department_id: row.department_id,
@@ -265,6 +334,8 @@ export function generateReports(filters: ReportFilters): ReportsResult {
     evaluations_count: Number(row.evaluations_count || 0),
     total: Number(row.total || 0),
     average: Number(row.average || 0),
+    first_month_total: Number(row.first_month_total || 0),
+    last_month_total: Number(row.last_month_total || 0),
   }));
 
   return {

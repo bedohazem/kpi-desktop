@@ -4,7 +4,6 @@ import * as XLSX from 'xlsx';
 import { toast } from '../../utils/toast';
 import {
   flattenDepartmentTree,
-  getDepartmentAndDescendantIds,
   sortDepartmentSummaryByTree,
   sortEmployeesByDepartmentTree,
 } from '../../utils/departments-tree';
@@ -29,27 +28,7 @@ export default function ReportsPage(): ReactElement {
     [departments],
   );
 
-  const selectedReportDepartmentIds = useMemo(() => {
-    if (!departmentId) {
-      return null;
-    }
-
-    return new Set(
-      getDepartmentAndDescendantIds(departments, Number(departmentId)),
-    );
-  }, [departments, departmentId]);
-
-  const filteredEmployees = useMemo(() => {
-    if (!selectedReportDepartmentIds) {
-      return employees;
-    }
-
-    return employees.filter(
-      (employee) =>
-        employee.department_id !== null &&
-        selectedReportDepartmentIds.has(employee.department_id),
-    );
-  }, [employees, selectedReportDepartmentIds]);
+  const filteredEmployees = employees;
 
   const orderedReportEmployees = useMemo(() => {
     if (!report) {
@@ -144,25 +123,14 @@ export default function ReportsPage(): ReactElement {
     return sortDepartmentSummaryByTree(report.departmentSummary, departments);
   }, [report, departments]);
 
-  function getDepartmentDifference(departmentId: number | null): number | null {
+  function getDepartmentDifference(
+    department: ReportsResult['departmentSummary'][number],
+  ): number | null {
     if (!report || report.months.length < 2) {
       return null;
     }
 
-    const firstMonth = report.months[0];
-    const lastMonth = report.months[report.months.length - 1];
-
-    const departmentEmployees = orderedReportEmployees.filter(
-      (employee) => employee.department_id === departmentId,
-    );
-
-    const getMonthTotal = (selectedMonth: number): number =>
-      departmentEmployees.reduce((sum, employee) => {
-        const value = employee.month_values[String(selectedMonth)];
-        return sum + (typeof value === 'number' ? value : 0);
-      }, 0);
-
-    return getMonthTotal(lastMonth) - getMonthTotal(firstMonth);
+    return department.last_month_total - department.first_month_total;
   }
 
   async function generateReport(): Promise<void> {
@@ -226,7 +194,7 @@ export default function ReportsPage(): ReactElement {
         م: index + 1,
         'اسم الموظف': employee.employee_name,
         المؤهل: employee.qualification || '',
-        الإدارة: employee.department_name || '',
+        'الإدارة الحالية': employee.department_name || '',
         الوظيفة: employee.job_title || '',
       };
 
@@ -271,7 +239,7 @@ export default function ReportsPage(): ReactElement {
     }
 
     const departmentRows = orderedDepartmentSummary.map((department) => {
-      const difference = getDepartmentDifference(department.department_id);
+      const difference = getDepartmentDifference(department);
 
       return {
         الإدارة: department.department_name,
@@ -384,7 +352,7 @@ export default function ReportsPage(): ReactElement {
           <td>${department.employees_count}</td>
           <td>${department.evaluations_count}</td>
           <td>${formatNumber(department.total)}</td>
-          <td>${formatDifference(getDepartmentDifference(department.department_id))}</td>
+          <td>${formatDifference(getDepartmentDifference(department))}</td>
         </tr>
       `,
       )
@@ -540,7 +508,7 @@ export default function ReportsPage(): ReactElement {
               <th>م</th>
               <th>اسم الموظف</th>
               <th>المؤهل</th>
-              <th>الإدارة</th>
+              <th>الإدارة الحالية</th>
               <th>الوظيفة</th>
               ${monthHeaders}
               <th>الإجمالي</th>
@@ -735,9 +703,7 @@ export default function ReportsPage(): ReactElement {
                   <p>الإجمالي: {department.total.toFixed(2)}</p>
                   <p>
                     الفرق:{' '}
-                    {formatDifference(
-                      getDepartmentDifference(department.department_id),
-                    )}
+                    {formatDifference(getDepartmentDifference(department))}
                   </p>
                 </div>
               ))}
@@ -785,7 +751,7 @@ export default function ReportsPage(): ReactElement {
                     <th>م</th>
                     <th>اسم الموظف</th>
                     <th>المؤهل</th>
-                    <th>الإدارة</th>
+                    <th>الإدارة الحالية</th>
                     <th>الوظيفة</th>
                     {report.months.map((month) => (
                       <th key={month}>شهر {month}</th>
