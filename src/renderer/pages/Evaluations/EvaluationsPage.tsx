@@ -267,6 +267,11 @@ export default function EvaluationsPage(): ReactElement {
   }
 
   function requestResetMonth(): void {
+    if (hasUnsavedChanges) {
+      toast.warning('احفظ التقييمات المعدّلة أولًا قبل التصفير');
+      return;
+    }
+
     const selectedMonth = Number(month);
     const selectedYear = Number(year);
 
@@ -368,7 +373,21 @@ export default function EvaluationsPage(): ReactElement {
     };
   }, []);
 
+  function requestLoadRows(): void {
+    if (hasUnsavedChanges) {
+      toast.warning('احفظ التقييمات المعدّلة أولًا قبل إعادة التحميل');
+      return;
+    }
+
+    void loadRows();
+  }
+
   function requestCopyPreviousMonth(): void {
+    if (hasUnsavedChanges) {
+      toast.warning('احفظ التقييمات المعدّلة أولًا قبل نسخ الشهر السابق');
+      return;
+    }
+
     setCopyDialogOpen(true);
   }
 
@@ -676,14 +695,15 @@ export default function EvaluationsPage(): ReactElement {
         <div className="actions-row">
           <button
             className="primary-button"
-            disabled={isLoading}
-            onClick={loadRows}
+            disabled={isLoading || isSaving || isResettingMonth}
+            onClick={requestLoadRows}
           >
             {isLoading ? 'جاري التحميل...' : 'تحميل الموظفين'}
           </button>
 
           <button
             className="secondary-button"
+            disabled={isSaving || isLoading || isResettingMonth}
             onClick={requestCopyPreviousMonth}
           >
             نسخ من الشهر السابق
