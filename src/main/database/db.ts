@@ -54,6 +54,7 @@ function migrateDb(database: Database.Database): void {
       year INTEGER NOT NULL,
       evaluation_value REAL DEFAULT 0,
       notes TEXT DEFAULT '',
+      department_id_at_evaluation INTEGER,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(employee_id) REFERENCES employees(id),
@@ -89,6 +90,33 @@ function migrateDb(database: Database.Database): void {
       ALTER TABLE employees
       ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
     `);
+  }
+
+  const evaluationColumns = database
+    .prepare('PRAGMA table_info(monthly_evaluations)')
+    .all() as Array<{ name: string }>;
+
+  const hasEvaluationDepartment = evaluationColumns.some(
+    (column) => column.name === 'department_id_at_evaluation',
+  );
+
+  if (!hasEvaluationDepartment) {
+    database.transaction(() => {
+      database.exec(`
+        ALTER TABLE monthly_evaluations
+        ADD COLUMN department_id_at_evaluation INTEGER;
+      `);
+
+      // ربط التقييمات القديمة بالإدارة الحالية مرة واحدة
+      database.exec(`
+        UPDATE monthly_evaluations
+        SET department_id_at_evaluation = (
+          SELECT e.department_id
+          FROM employees e
+          WHERE e.id = monthly_evaluations.employee_id
+        );
+      `);
+    })();
   }
 
   const duplicateNationalId = database

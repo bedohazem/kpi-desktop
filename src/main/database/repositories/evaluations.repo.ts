@@ -105,14 +105,20 @@ export function saveMonthlyEvaluations(
       month,
       year,
       evaluation_value,
-      notes
+      notes,
+      department_id_at_evaluation
     )
     VALUES (
       @employee_id,
       @month,
       @year,
       @evaluation_value,
-      @notes
+      @notes,
+      (
+        SELECT department_id
+        FROM employees
+        WHERE id = @employee_id
+      )
     )
     ON CONFLICT(employee_id, month, year)
     DO UPDATE SET
@@ -187,14 +193,16 @@ export function copyPreviousMonthEvaluations(
         month,
         year,
         evaluation_value,
-        notes
+        notes,
+        department_id_at_evaluation
       )
       SELECT
         previous.employee_id,
         @month,
         @year,
         previous.evaluation_value,
-        previous.notes
+        previous.notes,
+        e.department_id
       FROM monthly_evaluations previous
       INNER JOIN employees e ON e.id = previous.employee_id
       WHERE previous.month = @previousMonth
@@ -269,24 +277,20 @@ export async function resetMonthlyEvaluations(
       AND year = @year
       AND (
         @department_id IS NULL
-        OR employee_id IN (
-          SELECT e.id
-          FROM employees e
-          WHERE e.department_id IN (
-            WITH RECURSIVE selected_departments(id) AS (
-              SELECT id
-              FROM departments
-              WHERE id = @department_id
+        OR department_id_at_evaluation IN (
+          WITH RECURSIVE selected_departments(id) AS (
+            SELECT id
+            FROM departments
+            WHERE id = @department_id
 
-              UNION
+            UNION
 
-              SELECT d.id
-              FROM departments d
-              INNER JOIN selected_departments sd
-                ON sd.id = d.parent_id
-            )
-            SELECT id FROM selected_departments
+            SELECT d.id
+            FROM departments d
+            INNER JOIN selected_departments sd
+              ON sd.id = d.parent_id
           )
+          SELECT id FROM selected_departments
         )
       )
   `;
