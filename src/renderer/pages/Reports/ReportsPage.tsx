@@ -133,6 +133,67 @@ export default function ReportsPage(): ReactElement {
     return department.last_month_total - department.first_month_total;
   }
 
+  function getEmployeeHistory(
+    employee: ReportsResult['employees'][number],
+  ): string {
+    if (!report) return '';
+
+    type HistorySegment = {
+      from: number;
+      to: number;
+      departmentId: number | null;
+      department: string;
+      jobTitle: string;
+    };
+
+    const segments: HistorySegment[] = [];
+
+    for (const month of report.months) {
+      const assignment = employee.month_assignments[String(month)];
+
+      // الشهر غير المقيم لا نعتبره فترة عمل مؤكدة
+      if (!assignment) continue;
+
+      const department = assignment.department_name || 'بدون إدارة';
+      const jobTitle = assignment.job_title || 'الوظيفة غير مسجلة';
+
+      const previous = segments[segments.length - 1];
+
+      if (
+        previous &&
+        previous.to === month - 1 &&
+        previous.departmentId === assignment.department_id &&
+        previous.jobTitle === jobTitle
+      ) {
+        previous.to = month;
+        continue;
+      }
+
+      segments.push({
+        from: month,
+        to: month,
+        departmentId: assignment.department_id,
+        department,
+        jobTitle,
+      });
+    }
+
+    if (segments.length === 0) {
+      return 'لا توجد تقييمات محفوظة في الفترة';
+    }
+
+    return segments
+      .map((segment) => {
+        const period =
+          segment.from === segment.to
+            ? `شهر ${segment.from}`
+            : `شهر ${segment.from}–${segment.to}`;
+
+        return `${period}: ${segment.department} / ${segment.jobTitle}`;
+      })
+      .join(' | ');
+  }
+
   async function generateReport(): Promise<void> {
     toast.info('جاري انشاء تقرير ...');
 
@@ -195,7 +256,8 @@ export default function ReportsPage(): ReactElement {
         'اسم الموظف': employee.employee_name,
         المؤهل: employee.qualification || '',
         'الإدارة الحالية': employee.department_name || '',
-        الوظيفة: employee.job_title || '',
+        'الوظيفة الحالية': employee.job_title || '',
+        'حركة الإدارة والوظيفة': getEmployeeHistory(employee),
       };
 
       for (const reportMonth of report.months) {
@@ -217,8 +279,9 @@ export default function ReportsPage(): ReactElement {
         م: '',
         'اسم الموظف': 'الإجمالي',
         المؤهل: '',
-        الإدارة: '',
-        الوظيفة: '',
+        'الإدارة الحالية': '',
+        'الوظيفة الحالية': '',
+        'حركة الإدارة والوظيفة': '',
       };
 
       for (const reportMonth of report.months) {
@@ -309,7 +372,12 @@ export default function ReportsPage(): ReactElement {
         return `
         <tr>
           <td>${index + 1}</td>
-          <td class="text-cell">${escapeHtml(employee.employee_name)}</td>
+          <td class="text-cell">
+            ${escapeHtml(employee.employee_name)}
+            <div class="history-note">
+              ${escapeHtml(getEmployeeHistory(employee))}
+            </div>
+          </td>
           <td class="text-cell">${escapeHtml(employee.qualification || '-')}</td>
           <td class="text-cell">${escapeHtml(employee.department_name || '-')}</td>
           <td class="text-cell">${escapeHtml(employee.job_title || '-')}</td>
@@ -442,6 +510,13 @@ export default function ReportsPage(): ReactElement {
             white-space: pre-line;
           }
 
+          .history-note {
+            margin-top: 4px;
+            font-size: 7px;
+            line-height: 1.5;
+            color: #555;
+            white-space: normal;
+          }
 
           .summary-table th,
           .summary-table td {
@@ -509,7 +584,7 @@ export default function ReportsPage(): ReactElement {
               <th>اسم الموظف</th>
               <th>المؤهل</th>
               <th>الإدارة الحالية</th>
-              <th>الوظيفة</th>
+              <th>الوظيفة الحالية</th>
               ${monthHeaders}
               <th>الإجمالي</th>
               <th>الفرق</th>
@@ -752,7 +827,7 @@ export default function ReportsPage(): ReactElement {
                     <th>اسم الموظف</th>
                     <th>المؤهل</th>
                     <th>الإدارة الحالية</th>
-                    <th>الوظيفة</th>
+                    <th>الوظيفة الحالية</th>
                     {report.months.map((month) => (
                       <th key={month}>شهر {month}</th>
                     ))}
@@ -773,7 +848,22 @@ export default function ReportsPage(): ReactElement {
                     orderedReportEmployees.map((employee, index) => (
                       <tr key={employee.employee_id}>
                         <td>{index + 1}</td>
-                        <td>{employee.employee_name}</td>
+                        <td>
+                          <strong>{employee.employee_name}</strong>
+
+                          <small
+                            style={{
+                              display: 'block',
+                              marginTop: 6,
+                              fontSize: 12,
+                              lineHeight: 1.6,
+                              color: '#64748b',
+                              whiteSpace: 'normal',
+                            }}
+                          >
+                            {getEmployeeHistory(employee)}
+                          </small>
+                        </td>
                         <td>{employee.qualification || '-'}</td>
                         <td>{employee.department_name || '-'}</td>
                         <td>{employee.job_title || '-'}</td>

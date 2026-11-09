@@ -22,6 +22,9 @@ type EvaluationValueRow = {
   employee_id: number;
   month: number;
   evaluation_value: number;
+  department_id_at_evaluation: number | null;
+  department_name_at_evaluation: string | null;
+  job_title_at_evaluation: string | null;
 };
 
 type DepartmentAggregateRow = {
@@ -127,8 +130,13 @@ export function generateReports(filters: ReportFilters): ReportsResult {
       SELECT
         me.employee_id,
         me.month,
-        me.evaluation_value
+        me.evaluation_value,
+        me.department_id_at_evaluation,
+        d.name AS department_name_at_evaluation,
+        me.job_title_at_evaluation
       FROM monthly_evaluations me
+      LEFT JOIN departments d
+        ON d.id = me.department_id_at_evaluation
       WHERE me.year = @year
         AND me.month BETWEEN @from_month AND @to_month
         AND (
@@ -215,7 +223,7 @@ export function generateReports(filters: ReportFilters): ReportsResult {
       valuesByEmployee.get(employee.employee_id) || [];
 
     const monthValues: Record<string, number | null> = {};
-
+    const monthAssignments: EmployeeReportRow['month_assignments'] = {};
     for (const month of months) {
       const found = employeeEvaluations.find(
         (evaluation) => evaluation.month === month,
@@ -223,6 +231,14 @@ export function generateReports(filters: ReportFilters): ReportsResult {
 
       monthValues[String(month)] = found
         ? Number(found.evaluation_value)
+        : null;
+
+      monthAssignments[String(month)] = found
+        ? {
+            department_id: found.department_id_at_evaluation,
+            department_name: found.department_name_at_evaluation,
+            job_title: found.job_title_at_evaluation,
+          }
         : null;
     }
 
@@ -237,6 +253,7 @@ export function generateReports(filters: ReportFilters): ReportsResult {
     return {
       ...employee,
       month_values: monthValues,
+      month_assignments: monthAssignments,
       total,
       average,
       notes: employee.notes?.trim() || '',

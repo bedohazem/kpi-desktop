@@ -15,6 +15,14 @@ export type EmployeeReportRow = {
   sort_order: number;
   department_name: string | null;
   month_values: Record<string, number | null>;
+  month_assignments: Record<
+    string,
+    {
+      department_id: number | null;
+      department_name: string | null;
+      job_title: string | null;
+    } | null
+  >;
   total: number;
   average: number;
   notes: string;
