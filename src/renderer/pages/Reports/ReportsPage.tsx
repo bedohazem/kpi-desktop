@@ -194,7 +194,10 @@ export default function ReportsPage(): ReactElement {
   useEffect(() => {
     let isMounted = true;
 
-    Promise.all([window.api.departments.list(), window.api.employees.list()])
+    Promise.all([
+      window.api.departments.list({ includeInactive: true }),
+      window.api.employees.list({ includeInactive: true }),
+    ])
       .then(([departmentRows, employeeRows]) => {
         if (isMounted) {
           setDepartments(departmentRows);
@@ -658,6 +661,7 @@ export default function ReportsPage(): ReactElement {
                 <option key={department.id} value={department.id}>
                   {'— '.repeat(department.level)}
                   {department.name}
+                  {department.active !== 1 ? ' (معطّلة)' : ''}
                 </option>
               ))}
             </select>
@@ -677,6 +681,7 @@ export default function ReportsPage(): ReactElement {
               {filteredEmployees.map((employee) => (
                 <option key={employee.id} value={employee.id}>
                   {employee.name}
+                  {employee.active !== 1 ? ' (معطّل)' : ''}
                 </option>
               ))}
             </select>
