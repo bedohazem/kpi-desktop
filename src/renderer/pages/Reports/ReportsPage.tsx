@@ -313,13 +313,47 @@ export default function ReportsPage(): ReactElement {
       };
     });
 
+    const historyRows: (string | number)[][] = [
+      [
+        'اسم الموظف',
+        'السنة',
+        'الشهر',
+        'الإدارة وقت التقييم',
+        'الوظيفة وقت التقييم',
+        'درجة التقييم',
+      ],
+    ];
+
+    for (const employee of orderedReportEmployees) {
+      for (const reportMonth of report.months) {
+        const monthKey = String(reportMonth);
+        const score = employee.month_values[monthKey];
+        const assignment = employee.month_assignments[monthKey];
+
+        if (typeof score !== 'number' || !assignment) {
+          continue;
+        }
+
+        historyRows.push([
+          employee.employee_name,
+          Number(year),
+          reportMonth,
+          assignment.department_name || 'بدون إدارة',
+          assignment.job_title || 'الوظيفة غير مسجلة',
+          Number(score.toFixed(2)),
+        ]);
+      }
+    }
+
     const workbook = XLSX.utils.book_new();
 
     const employeesSheet = XLSX.utils.json_to_sheet(employeeRows);
     const departmentsSheet = XLSX.utils.json_to_sheet(departmentRows);
+    const historySheet = XLSX.utils.aoa_to_sheet(historyRows);
 
     XLSX.utils.book_append_sheet(workbook, employeesSheet, 'تقرير الموظفين');
     XLSX.utils.book_append_sheet(workbook, departmentsSheet, 'ملخص الإدارات');
+    XLSX.utils.book_append_sheet(workbook, historySheet, 'تاريخ التقييمات');
 
     const fileName = `KPI_Report_${year}_${fromMonth}_to_${toMonth}.xlsx`;
 
@@ -354,8 +388,10 @@ export default function ReportsPage(): ReactElement {
       .map((monthNumber) => `<th>شهر<br>${monthNumber}</th>`)
       .join('');
 
+    const monthColumnWidth = Math.min(6, 40 / report.months.length);
+
     const monthColumns = report.months
-      .map(() => '<col style="width: 4.2%" />')
+      .map(() => `<col style="width: ${monthColumnWidth}%" />`)
       .join('');
 
     const employeeRows = orderedReportEmployees
@@ -375,7 +411,7 @@ export default function ReportsPage(): ReactElement {
           <td class="text-cell">
             ${escapeHtml(employee.employee_name)}
             <div class="history-note">
-              ${escapeHtml(getEmployeeHistory(employee))}
+              ${escapeHtml(getEmployeeHistory(employee)).replaceAll(' | ', '\n')}
             </div>
           </td>
           <td class="text-cell">${escapeHtml(employee.qualification || '-')}</td>
@@ -515,7 +551,7 @@ export default function ReportsPage(): ReactElement {
             font-size: 7px;
             line-height: 1.5;
             color: #555;
-            white-space: normal;
+            white-space: pre-line;
           }
 
           .summary-table th,
@@ -564,6 +600,12 @@ export default function ReportsPage(): ReactElement {
         </table>
 
         <h2>تقرير الموظفين</h2>
+
+        <p style="font-size: 9px; line-height: 1.6; margin: 4px 0 8px;">
+          الإدارة والوظيفة الظاهرتان في الأعمدة هما البيانات الحالية للموظف.
+          حركة الإدارات والوظائف المسجلة وقت التقييم موضحة تحت اسمه.
+          تُحسب درجات كل إدارة وفق الإدارة المحفوظة مع تقييم الشهر.
+        </p>
 
         <table>
           <colgroup>
@@ -868,13 +910,26 @@ export default function ReportsPage(): ReactElement {
                         <td>{employee.department_name || '-'}</td>
                         <td>{employee.job_title || '-'}</td>
 
-                        {report.months.map((month) => (
-                          <td key={month}>
-                            {employee.month_values[String(month)] === null
-                              ? '-'
-                              : employee.month_values[String(month)]}
-                          </td>
-                        ))}
+                        {report.months.map((month) => {
+                          const monthKey = String(month);
+                          const score = employee.month_values[monthKey];
+                          const assignment =
+                            employee.month_assignments[monthKey];
+
+                          const details = assignment
+                            ? `الإدارة: ${
+                                assignment.department_name || 'بدون إدارة'
+                              } | الوظيفة: ${
+                                assignment.job_title || 'الوظيفة غير مسجلة'
+                              }`
+                            : 'لا يوجد تقييم محفوظ لهذا الشهر';
+
+                          return (
+                            <td key={month} title={details}>
+                              {typeof score === 'number' ? score : '-'}
+                            </td>
+                          );
+                        })}
 
                         <td>{employee.total.toFixed(2)}</td>
                         <td>
